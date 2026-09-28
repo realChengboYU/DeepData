@@ -39,12 +39,27 @@ def resolve_db_url(db_url: Optional[str] = None) -> Optional[str]:
 
 
 def get_sql_database(db_url: Optional[str] = None) -> Optional[SQLDatabase]:
-    """构造 SQLDatabase；无连接串或连接失败时返回 None。"""
+    """构造 SQLDatabase；无连接串或连接失败时返回 None。
+
+    给引擎加超时（连接 10s、PG 单条查询 30s）：避免慢查询 / 锁等待 / 网络抖动
+    把 worker 线程无限卡死——多个请求叠加会耗尽线程池，拖垮整个后端（表现为「卡在思考」）。
+    """
     url = resolve_db_url(db_url)
     if not url:
         return None
     try:
-        return SQLDatabase.from_uri(url)
+        from sqlalchemy import create_engine
+
+        connect_args = {"connect_timeout": 10}
+        if url.startswith("postgresql") or url.startswith("postgres"):
+            connect_args["options"] = "-c statement_timeout=30000"  # 单条查询最多 30s
+        engine = create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_recycle=1800,
+            connect_args=connect_args,
+        )
+        return SQLDatabase(engine)
     except Exception:
         return None
 
