@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/deepdata.svg" alt="DeepData" width="72" height="72" /></p>
+<p align="center"><img src="frontend/public/dog.png" alt="DeepData" width="96" height="96" /></p>
 
 # DeepData
 
