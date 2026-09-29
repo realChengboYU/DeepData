@@ -295,7 +295,7 @@
   font-size: 12.5px;
 }
 
-/* ---------- 全局错误横幅（新建表单 + 选表共用） ---------- */
+/* ---------- 全局错误横幅（新建表单 + 选表共用）；.ok 为成功态（测试连接通过等） ---------- */
 .ds-bannertest {
   border-radius: var(--dd-r-md);
   color: #e02745;
@@ -306,6 +306,11 @@
   padding: 10px 14px;
   font-size: 13px;
   line-height: 1.5;
+}
+.ds-bannertest.ok {
+  color: var(--dd-green);
+  background: rgba(52, 199, 89, 0.08);
+  border: 1px solid rgba(52, 199, 89, 0.4);
 }
 
 /* ---------- 响应式 ---------- */

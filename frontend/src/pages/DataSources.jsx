@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { deleteDataSource, getDataSources, setDataSourceActive } from '../api'
+import { deleteDataSource, getDataSources, setDataSourceActive, testDataSource } from '../api'
 import { DbTypeIcon } from '../components/datasource/DbTypeIcon'
 import DataSourceForm from '../components/datasource/DataSourceForm'
 import DataSourceList from '../components/datasource/DataSourceList'
@@ -22,8 +22,18 @@ export default function DataSources({ onBackToChat, onAsk }) {
   const [currentId, setCurrentId] = useState(null) // 当前向导流程中的数据源 id
   const [freshCreated, setFreshCreated] = useState(false) // 「下一步」刚建、还没保存表的源（取消时删）
   const [busy, setBusy] = useState('')
-  const [testMsg, setTestMsg] = useState('')
+  const [testingId, setTestingId] = useState('')
+  const [notice, setNotice] = useState(null) // { ok, msg } —— 页内横幅（测试通过/失败、删除/激活失败等）
+  const noticeTimer = useRef(null)
   const hadActiveRef = useRef(false)
+
+  // 短暂闪现一条页内提示（成功绿 / 失败红），几秒后自动消失
+  const flash = useCallback((msg, ok = false) => {
+    if (!msg) return
+    setNotice({ ok, msg })
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
+  }, [])
 
   const activeId = sources.find((s) => s.is_active)?.id ?? null
 
@@ -53,6 +63,13 @@ export default function DataSources({ onBackToChat, onAsk }) {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
+  // 卸载时清掉横幅自动消失的定时器
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    },
+    [],
+  )
 
   // 退出向导回到列表；keep=false 时删除「下一步」刚建但还没保存表的悬空源
   const goToList = ({ keep = false } = {}) => {
@@ -84,7 +101,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setEditing(null)
     setCurrentId(null)
     setFreshCreated(false)
-    setTestMsg('')
+    setNotice(null)
     setNewStep('form')
     setView('new')
   }
@@ -92,7 +109,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setEditing(s)
     setCurrentId(s.id)
     setFreshCreated(false)
-    setTestMsg('')
+    setNotice(null)
     setNewStep('form')
     setView('edit')
   }
@@ -102,7 +119,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setEditing(s)
     setCurrentId(s.id)
     setFreshCreated(false)
-    setTestMsg('')
+    setNotice(null)
     setNewStep('tables')
     setView('tables')
   }
@@ -136,7 +153,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setBusy(s.id)
     deleteDataSource(s.id)
       .then(() => load())
-      .catch(() => {})
+      .catch((e) => flash(e?.response?.data?.detail || t('ds.deleteFail'), false))
       .finally(() => setBusy(''))
   }
 
@@ -144,8 +161,17 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setBusy(id)
     setDataSourceActive(id)
       .then(() => load())
-      .catch(() => {})
+      .catch((e) => flash(e?.response?.data?.detail || t('ds.activeFail'), false))
       .finally(() => setBusy(''))
+  }
+
+  // 测试「已保存」的数据源连接（走后端 POST /datasources/{id}/test），结果在页内横幅显示
+  const doTest = (id) => {
+    setTestingId(id)
+    testDataSource(id)
+      .then((r) => flash(r?.message || (r?.ok ? t('ds.testOk') : t('ds.testFail')), !!r?.ok))
+      .catch((e) => flash(e?.response?.data?.detail || t('ds.testFail'), false))
+      .finally(() => setTestingId(''))
   }
 
   // 面包屑「数据源」段点击：直接回列表（查看表页无悬空源，keep；向导内取消会删未保存源）
@@ -172,19 +198,25 @@ export default function DataSources({ onBackToChat, onAsk }) {
       )}
 
       <div className={`dsrc-container${view === 'tables' ? ' is-tables' : ''}`}>
-        {testMsg && <div className="ds-bannertest">{testMsg}</div>}
+        {notice && (
+          <div className={`ds-bannertest${notice.ok ? ' ok' : ''}`} role="status">
+            {notice.msg}
+          </div>
+        )}
 
         {view === 'list' && (
           <DataSourceList
             sources={sources}
             activeId={activeId}
             busy={busy}
+            testing={testingId}
             loading={loading}
             onNew={openNew}
             onEdit={openEdit}
             onViewTables={openTables}
             onAsk={onAsk}
             onSetActive={doSetActive}
+            onTest={doTest}
             onRemove={remove}
           />
         )}
@@ -196,11 +228,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
               existingId={currentId}
               onNext={handleFormNext}
               onPrev={goToList}
-              onError={(m) => {
-                if (!m) return
-                setTestMsg(m)
-                setTimeout(() => setTestMsg(''), 4000)
-              }}
+              onError={(m) => flash(m, false)}
             />
           </div>
         )}
@@ -229,11 +257,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
                   editing={editing}
                   existingId={editing.id}
                   onNext={handleSheetSaved}
-                  onError={(m) => {
-                    if (!m) return
-                    setTestMsg(m)
-                    setTimeout(() => setTestMsg(''), 4000)
-                  }}
+                  onError={(m) => flash(m, false)}
                 />
               </div>
             </div>
@@ -251,11 +275,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
               // 「查看表」页只有一级：返回 = 回列表；向导内：返回 = 上一步（连接表单）
               onPrev={view === 'tables' ? () => goToList({ keep: true }) : () => setNewStep('form')}
               backLabel={view === 'tables' ? t('ds.backTo') : undefined}
-              onError={(m) => {
-                if (!m) return
-                setTestMsg(m)
-                setTimeout(() => setTestMsg(''), 4000)
-              }}
+              onError={(m) => flash(m, false)}
             />
           </div>
         )}

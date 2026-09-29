@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { CircleCheck, Loader2, Pencil, Plus, Search, Table, Trash2 } from 'lucide-react'
+import { CircleCheck, Loader2, Pencil, Plus, Search, Table, Trash2, Zap } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { DbTypeIcon } from './DbTypeIcon'
 import './cards.css'
 
 // 数据源列表（卡片网格 + 搜索/新建页头 + 空态/骨架）
-export default function DataSourceList({ sources, activeId, busy, loading, onNew, onEdit, onViewTables, onAsk, onSetActive, onRemove }) {
+export default function DataSourceList({ sources, activeId, busy, testing, loading, onNew, onEdit, onViewTables, onAsk, onSetActive, onTest, onRemove }) {
   const { t } = useI18n()
   const [search, setSearch] = useState('')
   if (!loading && sources.length === 0) {
@@ -109,6 +109,15 @@ export default function DataSourceList({ sources, activeId, busy, loading, onNew
                         <CircleCheck />
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      className="ds-act-btn"
+                      disabled={busy === s.id || testing === s.id}
+                      title={t('ds.test')}
+                      onClick={() => onTest(s.id)}
+                    >
+                      {testing === s.id ? <Loader2 className="spin" /> : <Zap />}
+                    </button>
                     <button type="button" className="ds-act-btn" title={t('ds.viewTables')} onClick={() => onViewTables(s)}>
                       <Table />
                     </button>

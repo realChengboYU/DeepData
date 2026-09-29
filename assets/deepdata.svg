@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DeepData">
+  <rect width="64" height="64" rx="15" fill="#0f172a"/>
+  <path
+    d="M20 18 H44 A4 4 0 0 1 48 22 V36 A4 4 0 0 1 44 40 H28 L22 45 V40 H20 A4 4 0 0 1 16 36 V22 A4 4 0 0 1 20 18 Z"
+    fill="#2563eb"
+  />
+  <g fill="#ffffff">
+    <rect x="26" y="29" width="3" height="7" rx="1.5"/>
+    <rect x="32" y="26" width="3" height="10" rx="1.5"/>
+    <rect x="38" y="23" width="3" height="13" rx="1.5"/>
+  </g>
+</svg>
