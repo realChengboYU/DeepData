@@ -1,23 +1,24 @@
-<p align="center"><img src="frontend/public/dog.png" alt="DeepData" width="96" height="96" /></p>
+<div align="center">
+  <img src="frontend/public/dog.png" alt="DeepData" width="150" height="150" style="border-radius: 32px; box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);" />
+  <h1 style="margin: 16px 0 0; font-size: 2.5rem; line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; color: #0f172a;">DeepData</h1>
+  <p style="margin: 10px 0 0; font-size: 1.05rem; color: #57606a;">用一句话，问清你的数据。</p>
+  <p style="margin: 2px 0 0; font-size: 0.95rem; font-style: italic; color: #8b949e;">Ask your data in one sentence.</p>
+</div>
 
-# DeepData
-
-**用一句话，问清你的数据。** · *Ask your data in one sentence.*
-
-DeepData 是一个**自然语言数据问答智能体**：你用中文描述想了解的问题，它连接你的 PostgreSQL 业务库，经 **LangGraph + LLM + SQL 工具**给出**可追溯、可解释**的回答，并把思考过程、工具调用、SQL 与图表透明地呈现在界面上。不用写 SQL，也不懂表结构——你只管提问。
+DeepData 是一个**自然语言数据问答智能体**：你用中文描述想了解的问题，它连接你的 PostgreSQL 业务库，经 **LangGraph + LLM + SQL 工具**给出**可追溯、可解释**的回答，并把思考过程、工具调用、SQL 与图表透明地呈现在界面上。不用写 SQL，也不懂表结构，你只管提问。
 
 ---
 
 ## 功能亮点
 
-- **一句话问数** —— 自然语言提问，模型经 SQL 工具自主查询，返回可核对的结果
-- **思考与工具透明** —— `reasoning` 折叠卡、每次工具调用的参数与结果、SQL、图表逐一展示
-- **数据源管理** —— 分开录入连接信息（地址 / 端口 / 库 / 账号 / 密码），服务端拼接连接串；密码 **AES-GCM** 加密落库，接口不回传明文
-- **表 / 字段策展** —— 连目标库读元数据，勾选暴露给模型的表与字段，补业务注释与枚举说明
-- **会话绑定数据源** —— 每个会话绑定一个库，会话内可切换；未指定时回退到「使用中」的数据源
-- **多模型配置** —— OpenAI 兼容接口，页面增删改查 / 测连通 / 设默认，聊天时切换
-- **会话管理** —— 多轮、历史持久化、重命名、删除、导出 Markdown
-- **Apple 风格界面** —— 浅色、居中弹层、选表 / 表结构 / 数据预览
+- **一句话问数**：自然语言提问，模型经 SQL 工具自主查询，返回可核对的结果
+- **思考与工具透明**：`reasoning` 折叠卡、每次工具调用的参数与结果、SQL、图表逐一展示
+- **数据源管理**：分开录入连接信息（地址 / 端口 / 库 / 账号 / 密码），服务端拼接连接串；密码 **AES-GCM** 加密落库，接口不回传明文
+- **表 / 字段策展**：连目标库读元数据，勾选暴露给模型的表与字段，补业务注释与枚举说明
+- **会话绑定数据源**：每个会话绑定一个库，会话内可切换；未指定时回退到「使用中」的数据源
+- **多模型配置**：OpenAI 兼容接口，页面增删改查 / 测连通 / 设默认，聊天时切换
+- **会话管理**：多轮、历史持久化、重命名、删除、导出 Markdown
+- **Apple 风格界面**：浅色、居中弹层、选表 / 表结构 / 数据预览
 
 ## 技术栈
 
