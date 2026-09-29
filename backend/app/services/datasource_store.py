@@ -581,7 +581,7 @@ def list_target_fields(
     schema: str = "public",
     ssl: bool = False,
 ) -> list[dict]:
-    """列出某表（在给定 schema 下）的字段（字段名 + 类型），返回 [{field_name, field_type}]。"""
+    """列出某表（在给定 schema 下）的字段（字段名 + 类型 + 库里原始备注），返回 [{field_name, field_type, field_comment}]。"""
     engine = None
     try:
         from sqlalchemy import text
@@ -590,14 +590,22 @@ def list_target_fields(
         with engine.connect() as conn:
             rows = conn.execute(
                 text(
-                    "SELECT column_name, data_type "
-                    "FROM information_schema.columns "
-                    "WHERE table_schema=:s AND table_name=:t "
-                    "ORDER BY ordinal_position"
+                    "SELECT a.attname, format_type(a.atttypid, a.atttypmod), "
+                    "COALESCE(d.description, '') "
+                    "FROM pg_attribute a "
+                    "JOIN pg_class c ON c.oid = a.attrelid "
+                    "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    "LEFT JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum "
+                    "WHERE n.nspname = :s AND c.relname = :t "
+                    "AND a.attnum > 0 AND NOT a.attisdropped "
+                    "ORDER BY a.attnum"
                 ),
                 {"s": schema or "public", "t": table_name},
             ).fetchall()
-        return [{"field_name": r[0], "field_type": r[1] or ""} for r in rows]
+        return [
+            {"field_name": r[0], "field_type": r[1] or "", "field_comment": r[2] or ""}
+            for r in rows
+        ]
     finally:
         if engine is not None:
             try:

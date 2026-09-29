@@ -100,12 +100,16 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
             table_name: x.table_name,
             table_comment: x.table_comment || '',
             custom_comment: cur?.custom_comment || '',
-            checked: cur ? cur.checked : true,
+            // 未策展过的表默认不勾选（opt-in）：勾选哪些才算选中哪些，
+            // 避免新建数据源时全部表默认全选、用户只勾了几张却保存成全部。
+            checked: cur ? cur.checked : false,
             fields: cur?.fields ?? [],
           }
         })
         setTables(list)
-        if (list.length) setActive(list[0].table_name)
+        // active 指向第一张已勾选的表；没有任何勾选时右侧留空（不显示未选表的字段）
+        const firstChecked = list.find((x) => x.checked)
+        setActive(firstChecked ? firstChecked.table_name : '')
       })
       .catch((e) => {
         if (live) setLoadErr(e?.response?.data?.detail || t('ds.tablesReadFail'))
@@ -135,6 +139,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
           return {
             field_name: f.field_name,
             field_type: f.field_type || '',
+            field_comment: f.field_comment || '',
             checked: p ? p.checked : true,
             custom_comment: p?.custom_comment || '',
             enum_values: p?.enum_values || '',
@@ -155,6 +160,17 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, sourceId])
 
+  // 活动表被取消勾选时：跳到仍勾选的表；没有任何勾选时清空右侧
+  useEffect(() => {
+    if (!active) return
+    const act = tables.find((x) => x.table_name === active)
+    if (!act || !act.checked) {
+      const next = tables.find((x) => x.checked)
+      setActive(next ? next.table_name : '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, active])
+
   // 字段搜索变化时回到第一页
   useEffect(() => {
     setStructPage(0)
@@ -173,7 +189,9 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
   const pickKw = pickSearch.trim().toLowerCase()
   const pickFiltered = pickKw ? tables.filter((x) => x.table_name.toLowerCase().includes(pickKw)) : tables
   const checkedCount = tables.filter((x) => x.checked).length
-  const allChecked = tables.length > 0 && checkedCount === tables.length
+  // 「全选」作用于当前可见（搜索过滤后）的表；无搜索时作用于全部表
+  const selectAllList = pickKw ? pickFiltered : tables
+  const selectAllOn = selectAllList.length > 0 && selectAllList.every((x) => x.checked)
   const activeRow = tables.find((x) => x.table_name === active)
   // 字段搜索过滤（仅作用于当前活动表的表结构视图）
   const fk = fieldKw.trim().toLowerCase()
@@ -187,7 +205,11 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
 
   const setChecked = (name, val) => setTables((ts) => ts.map((x) => (x.table_name === name ? { ...x, checked: val } : x)))
   const setComment = (name, val) => setTables((ts) => ts.map((x) => (x.table_name === name ? { ...x, custom_comment: val } : x)))
-  const setAll = (val) => setTables((ts) => ts.map((x) => ({ ...x, checked: val })))
+  // 全选：有搜索时只勾选/取消当前搜索命中的表；否则作用于全部表
+  const setAll = (val) => {
+    const names = new Set((pickKw ? pickFiltered : tables).map((x) => x.table_name))
+    setTables((ts) => ts.map((x) => (names.has(x.table_name) ? { ...x, checked: val } : x)))
+  }
   // 更新活动表某字段的 勾选 / 注释 / 枚举
   const setField = (tableName, fieldName, key, val) =>
     setTables((ts) =>
@@ -203,7 +225,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
     setPreviewLoading(true)
     setPreview(null)
     try {
-      setPreview(await introspectPreview(sourceId, active, 10))
+      setPreview(await introspectPreview(sourceId, active, 100))
     } catch (e) {
       onError?.(e?.response?.data?.detail || t('ds.tablesReadFail'))
     } finally {
@@ -394,7 +416,6 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                             <th>{t('ds.colName')}</th>
                             <th>{t('ds.colType')}</th>
                             <th>{t('ds.colComment')}</th>
-                            <th>{t('ds.fieldEnum')}</th>
                             <th className="dsrc-struct-on">{t('ds.colEnabled')}</th>
                           </tr>
                         </thead>
@@ -408,22 +429,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                                 <span className="dsrc-struct-type">{f.field_type}</span>
                               </td>
                               <td>
-                                <input
-                                  className="ds-input ds-input-sm"
-                                  placeholder={t('ds.fieldCommentPh')}
-                                  value={f.custom_comment}
-                                  disabled={!f.checked}
-                                  onChange={(e) => setField(active, f.field_name, 'custom_comment', e.target.value)}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  className="ds-input ds-input-sm"
-                                  placeholder={t('ds.fieldEnumPh')}
-                                  value={f.enum_values}
-                                  disabled={!f.checked}
-                                  onChange={(e) => setField(active, f.field_name, 'enum_values', e.target.value)}
-                                />
+                                <span className="dsrc-struct-comment">{f.field_comment || ''}</span>
                               </td>
                               <td className="dsrc-struct-on">
                                 <label className="ds-switch">
@@ -535,7 +541,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
             </div>
             <div className="dsrc-sheet-body">
               <label className="dsrc-sheet-all">
-                <input type="checkbox" checked={allChecked} onChange={(e) => setAll(e.target.checked)} />
+                <input type="checkbox" checked={selectAllOn} onChange={(e) => setAll(e.target.checked)} />
                 <span>{t('ds.selectAll')}</span>
               </label>
               <div className="dsrc-sheet-list">

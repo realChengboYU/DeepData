@@ -140,7 +140,7 @@ export function introspectFields(id, table) {
 }
 
 // 内省：预览某表前 N 行
-export function introspectPreview(id, table, limit = 10) {
+export function introspectPreview(id, table, limit = 100) {
   return api
     .post(
       `/datasources/${encodeURIComponent(id)}/introspect/preview/${encodeURIComponent(table)}?limit=${limit}`,

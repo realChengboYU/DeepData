@@ -256,7 +256,7 @@ def introspect_preview(
     source_id: str,
     table_name: str,
     user_key: str = Depends(get_user_key),
-    limit: int = 10,
+    limit: int = 100,
 ) -> dict:
     """连目标库，预览某表前 N 行。"""
     src = _get_owned(source_id, user_key)

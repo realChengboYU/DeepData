@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { ChevronRight, Database, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { deleteDataSource, getDataSources, setDataSourceActive, testDataSource } from '../api'
 import { DbTypeIcon } from '../components/datasource/DbTypeIcon'
@@ -184,16 +184,18 @@ export default function DataSources({ onBackToChat, onAsk }) {
         <header className="dsrc-topbar">
           <nav className="dsrc-crumbs" aria-label="面包屑">
             <button type="button" className="dsrc-crumb-link" onClick={onCrumbHome}>
-              {t('ds.title')}
+              <Database className="dsrc-crumb-ico" aria-hidden="true" />
+              <span>{t('ds.title')}</span>
             </button>
-            <span className="dsrc-crumb-sep" aria-hidden="true">
-              &gt;
+            <ChevronRight className="dsrc-crumb-sep" aria-hidden="true" />
+            <span className="dsrc-crumb-cur">
+              {view === 'tables' ? (
+                <DbTypeIcon type={editing?.type || 'postgresql'} size={16} className="dsrc-crumb-db" />
+              ) : null}
+              <span className="dsrc-crumb-cur-name">{title}</span>
             </span>
-            <span className="dsrc-crumb-cur">{title}</span>
           </nav>
-          <span className="dsrc-topbar-badge">
-            <DbTypeIcon type="postgresql" size={16} /> PostgreSQL
-          </span>
+          <span className="dsrc-topbar-badge">PostgreSQL</span>
         </header>
       )}
 

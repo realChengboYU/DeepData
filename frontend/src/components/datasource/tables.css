@@ -501,19 +501,20 @@
 }
 .dsrc-struct th {
   text-align: left;
-  padding: 10px 14px;
+  padding: 9px 12px;
   background: var(--dd-canvas);
   color: var(--dd-text-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
   border-bottom: 1px solid var(--dd-line-strong);
   white-space: nowrap;
 }
 .dsrc-struct td {
-  padding: 9px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--dd-line);
   vertical-align: middle;
+  line-height: 20px;
 }
 .dsrc-struct tbody tr:last-child td {
   border-bottom: none;
@@ -530,19 +531,20 @@
 }
 .dsrc-struct-type {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--dd-text-3);
   white-space: nowrap;
 }
-.dsrc-struct .ds-input-sm {
-  min-width: 150px;
+.dsrc-struct-comment {
+  font-size: 13px;
+  color: var(--dd-text-2);
+  white-space: normal;
+  word-break: break-word;
 }
 .dsrc-struct tr.off .dsrc-struct-name,
-.dsrc-struct tr.off .dsrc-struct-type {
+.dsrc-struct tr.off .dsrc-struct-type,
+.dsrc-struct tr.off .dsrc-struct-comment {
   color: var(--dd-text-3);
-}
-.dsrc-struct tr.off .ds-input-sm {
-  opacity: 0.45;
 }
 .dsrc-struct-on {
   text-align: right;
@@ -598,6 +600,7 @@
   display: inline-flex;
   align-items: center;
   cursor: pointer;
+  vertical-align: middle;
 }
 .ds-switch input {
   position: absolute;
@@ -657,7 +660,7 @@
 }
 .dsrc-preview-table {
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13px;
   width: max-content;
   min-width: 100%;
 }
@@ -668,19 +671,20 @@
   background: var(--dd-canvas);
   color: var(--dd-text-2);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 13px;
   letter-spacing: 0.02em;
   text-align: left;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--dd-line-strong);
   white-space: nowrap;
 }
 .dsrc-preview-table td {
-  padding: 7px 12px;
+  padding: 8px 12px;
   color: var(--dd-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   border-bottom: 1px solid var(--dd-line);
   white-space: nowrap;
+  line-height: 20px;
 }
 
 /* 窄屏：回到单列堆叠（列表限高内滚，框架不变） */
