@@ -1,0 +1,707 @@
+/* 选表步：左表清单 + 右表结构/数据预览 + 字段表格 + 启用开关 —— 随 TableSelectStep.jsx 引入 */
+
+/* ---------- 选表步：Mail/Finder 式统一分栏面板 ----------
+   单一表面 + 内部 1px 发丝线分隔（无中间空隙）；左 300px 侧栏浅底，右栏白底。
+   贴边 full-bleed，整页固定框架（不产生页面滚动）：
+   左列表自身内滚、表结构分页限高、数据预览限高滚动框、「勾选表」底部 sheet。
+   双类选择器提高特异性：datasource.css 的 .dsrc-flow{max-width:760px} 在包内排在后面，单类会被它压掉 */
+.dsrc-flow.dsrc-flow-tables {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  gap: 0;
+}
+.dsrc-tables {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  background: var(--dd-surface);
+  overflow: hidden;
+}
+/* 操作栏：容器已去内边距，这里自带留白；sticky 贴住页面底部，滚动时始终可见 */
+.dsrc-flow.dsrc-flow-tables .ds-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding: 14px 20px;
+  background: var(--dd-canvas);
+  border-top: 1px solid var(--dd-line);
+}
+.dsrc-tables-left,
+.dsrc-tables-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* 左：侧栏（浅灰底 + 右侧发丝线，Finder 侧栏语言） */
+.dsrc-tables-left {
+  width: 300px;
+  flex: none;
+  background: var(--dd-canvas);
+  border-right: 1px solid var(--dd-line);
+}
+/* 右：详情区（白底；内容超限时自身滚动兜底，正常不出现滚动条） */
+.dsrc-tables-right {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px 16px;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+/* 左面板标题：数据表 + 网格图标（侧栏分区头语言：小号灰字） */
+.dsrc-tables-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--dd-text-3);
+}
+.dsrc-tables-title-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* 「勾选表」整页视图：右上角按钮点开，列出全部表供勾选（左栏只显示已勾选） */
+.dsrc-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--dd-text-3);
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.dsrc-pick-btn:hover {
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-1);
+}
+.dsrc-pick-btn:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+/* 左栏表清单搜索：过滤已勾选表（表名/注释） */
+.dsrc-list-search {
+  margin: 2px 12px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-sm);
+  background: var(--dd-surface);
+  color: var(--dd-text-3);
+  transition: border-color 0.15s var(--dd-ease), box-shadow 0.15s var(--dd-ease);
+}
+.dsrc-list-search:focus-within {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-ring);
+}
+.dsrc-list-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--dd-text-1);
+}
+.dsrc-list-search input::placeholder {
+  color: var(--dd-text-3);
+}
+.dsrc-list-search svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.dsrc-pick-btn svg {
+  width: 14px;
+  height: 14px;
+}
+/* 「勾选表」底部 sheet（Apple bottom sheet）：portal 到 body，fixed 视口锚定，
+   从底部上滑；自身头部（标题/计数/搜索/全选）+ 列表内滚 + 底部操作栏 */
+.dsrc-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(29, 29, 31, 0.28);
+  opacity: 0;
+  transition: opacity 0.24s var(--dd-ease-out);
+}
+.dsrc-sheet-scrim.open {
+  opacity: 1;
+}
+.dsrc-sheet-scrim.closing {
+  opacity: 0;
+}
+.dsrc-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  height: 82vh;
+  height: 82dvh;
+  max-height: calc(100dvh - 12px);
+  min-height: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--dd-surface);
+  border-radius: var(--dd-r-lg) var(--dd-r-lg) 0 0;
+  box-shadow: var(--dd-shadow-3), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(100%);
+  transition: transform 0.32s var(--dd-ease-pop);
+}
+.dsrc-sheet.open {
+  transform: translateY(0);
+}
+.dsrc-sheet.closing {
+  transform: translateY(100%);
+  transition: transform 0.22s var(--dd-ease-out);
+}
+/* 顶部把手：sheet 身份标识（装饰） */
+.dsrc-sheet-grip {
+  flex: none;
+  width: 36px;
+  height: 4px;
+  margin: 10px auto 0;
+  border-radius: 2px;
+  background: var(--dd-line-strong);
+}
+.dsrc-sheet-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 20px 14px;
+}
+.dsrc-sheet-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  letter-spacing: -.01em;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--dd-text-1);
+}
+.dsrc-sheet-count {
+  font-size: 13px;
+  color: var(--dd-text-3);
+}
+.dsrc-sheet-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  color: var(--dd-text-3);
+  transition: border-color 0.15s var(--dd-ease), box-shadow 0.15s var(--dd-ease);
+}
+.dsrc-sheet-search:focus-within {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-ring);
+}
+.dsrc-sheet-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--dd-text-1);
+}
+.dsrc-sheet-search input::placeholder {
+  color: var(--dd-text-3);
+}
+/* 列表区：带边框圆角容器，顶部「全选」栏 + 可滚动清单 */
+.dsrc-sheet-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 20px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  overflow: hidden;
+}
+.dsrc-sheet-all {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--dd-canvas);
+  border-bottom: 1px solid var(--dd-line);
+  color: var(--dd-text-1);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dsrc-sheet-all input {
+  accent-color: var(--dd-accent);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+.dsrc-sheet-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+.dsrc-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.13s var(--dd-ease);
+}
+.dsrc-sheet-row:hover {
+  background: var(--dd-tint-hover);
+}
+.dsrc-sheet-row input {
+  accent-color: var(--dd-accent);
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+.dsrc-sheet-row-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--dd-text-2);
+}
+.dsrc-sheet-row .dsrc-table-name {
+  color: var(--dd-text-2);
+}
+.dsrc-sheet-row.on .dsrc-table-name {
+  color: var(--dd-text-1);
+}
+.dsrc-sheet-row-cmt {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 44%;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--dd-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* sheet 底部操作栏：取消（收起）/ 保存 */
+.dsrc-sheet-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--dd-surface);
+  border-top: 1px solid var(--dd-line);
+}
+.dsrc-sheet-foot .ds-btn-primary {
+  margin-left: auto;
+}
+/* 计数行：已选数（左）+ 全选（右） */
+.dsrc-tables-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: var(--dd-text-3);
+  border-bottom: 1px solid var(--dd-line);
+}
+.dsrc-tables-state {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--dd-text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.dsrc-tables-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dsrc-table {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--dd-r-sm);
+  cursor: pointer;
+  transition: background 0.13s var(--dd-ease);
+}
+.dsrc-table:hover {
+  background: var(--dd-tint-hover);
+}
+.dsrc-table.active {
+  background: var(--dd-tint-active);
+  box-shadow: inset 0 0 0 1px var(--dd-accent);
+}
+.dsrc-table-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--dd-text-2);
+}
+.dsrc-table-name {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dd-text-1);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dsrc-table-note {
+  margin-left: auto;
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--dd-accent);
+}
+
+.dsrc-ds-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dsrc-ds-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--dd-text-1);
+  overflow-wrap: anywhere;
+}
+.dsrc-ds-comment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--dd-text-3);
+  line-height: 1.5;
+}
+.dsrc-ds-comment svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--dd-text-3);
+}
+
+/* 视图切换：表结构 / 数据预览（分段控件）+ 表内字段搜索 */
+.dsrc-viewrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dsrc-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--dd-canvas);
+  border: 1px solid var(--dd-line);
+  border-radius: 9px;
+}
+.dsrc-tab {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dd-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.dsrc-tab:hover {
+  color: var(--dd-text-1);
+}
+.dsrc-tab.on {
+  background: var(--dd-surface);
+  color: var(--dd-accent);
+  font-weight: 600;
+  box-shadow: var(--dd-shadow-1);
+}
+.dsrc-fields-search {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 200px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-sm);
+  background: var(--dd-surface);
+  color: var(--dd-text-3);
+  transition: border-color 0.15s var(--dd-ease), box-shadow 0.15s var(--dd-ease);
+}
+.dsrc-fields-search:focus-within {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-ring);
+}
+.dsrc-fields-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--dd-text-1);
+}
+.dsrc-fields-search input::placeholder {
+  color: var(--dd-text-3);
+}
+
+/* 字段表格（参照表管理页：表头浅底 + 发丝线行 + 右对齐启用开关） */
+.dsrc-struct-wrap {
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  overflow-x: auto;
+}
+.dsrc-struct {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.dsrc-struct th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--dd-canvas);
+  color: var(--dd-text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--dd-line-strong);
+  white-space: nowrap;
+}
+.dsrc-struct td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--dd-line);
+  vertical-align: middle;
+}
+.dsrc-struct tbody tr:last-child td {
+  border-bottom: none;
+}
+.dsrc-struct tbody tr:hover td {
+  background: var(--dd-tint-hover);
+}
+.dsrc-struct-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dd-text-1);
+  white-space: nowrap;
+}
+.dsrc-struct-type {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--dd-text-3);
+  white-space: nowrap;
+}
+.dsrc-struct .ds-input-sm {
+  min-width: 150px;
+}
+.dsrc-struct tr.off .dsrc-struct-name,
+.dsrc-struct tr.off .dsrc-struct-type {
+  color: var(--dd-text-3);
+}
+.dsrc-struct tr.off .ds-input-sm {
+  opacity: 0.45;
+}
+.dsrc-struct-on {
+  text-align: right;
+  width: 64px;
+}
+/* 表结构底栏：左 已启用计数 / 右 分页器（10 条/页） */
+.dsrc-struct-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 2px 0;
+}
+.dsrc-struct-foot {
+  font-size: 12.5px;
+  color: var(--dd-text-3);
+}
+.dsrc-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.dsrc-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line-strong);
+  border-radius: var(--dd-r-sm);
+  font-size: 13px;
+  color: var(--dd-text-2);
+  cursor: pointer;
+  transition: color 0.15s var(--dd-ease), border-color 0.15s var(--dd-ease);
+}
+.dsrc-pager-btn:hover:not(:disabled) {
+  color: var(--dd-text-1);
+  border-color: var(--dd-text-3);
+}
+.dsrc-pager-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dsrc-pager-ind {
+  font-size: 13px;
+  color: var(--dd-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* iOS 式开关（字段启用状态；绿色 = 全站统一的「启用/在跑」语义色） */
+.ds-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.ds-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ds-switch-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #dfe3e8;
+  transition: background 0.18s var(--dd-ease);
+}
+.ds-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s var(--dd-ease);
+}
+.ds-switch input:checked + .ds-switch-track {
+  background: #34c759;
+}
+.ds-switch input:checked + .ds-switch-track::after {
+  transform: translateX(14px);
+}
+.ds-switch input:focus-visible + .ds-switch-track {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-switch-track,
+  .ds-switch-track::after,
+  .dsrc-tab,
+  .dsrc-sheet,
+  .dsrc-sheet-scrim {
+    transition: none;
+  }
+}
+
+/* 数据预览：固定高度滚动框，宽表出横向滚动条、多行出纵向滚动条 */
+.dsrc-preview {
+  overflow: auto;
+  max-height: 280px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+}
+.dsrc-preview-table {
+  border-collapse: collapse;
+  font-size: 12.5px;
+  width: max-content;
+  min-width: 100%;
+}
+.dsrc-preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--dd-canvas);
+  color: var(--dd-text-2);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--dd-line-strong);
+  white-space: nowrap;
+}
+.dsrc-preview-table td {
+  padding: 7px 12px;
+  color: var(--dd-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  border-bottom: 1px solid var(--dd-line);
+  white-space: nowrap;
+}
+
+/* 窄屏：回到单列堆叠（列表限高内滚，框架不变） */
+@media (max-width: 760px) {
+  .dsrc-tables {
+    flex-direction: column;
+  }
+  .dsrc-tables-left {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--dd-line);
+  }
+  .dsrc-tables-list {
+    max-height: 40vh;
+  }
+  .dsrc-sheet {
+    height: 88%;
+  }
+  .dsrc-sheet-search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+}
+

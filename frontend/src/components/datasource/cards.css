@@ -1,0 +1,286 @@
+/* 卡片网格：骨架屏 / 数据源卡片（含真实连接串）/ 空态 —— 随 DataSourceList.jsx 引入 */
+
+/* ---------- 骨架屏（加载态） ---------- */
+.ds-skel {
+  display: grid;
+  /* 与 .ds-list 同列宽，加载态与真实网格对齐 */
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 20px;
+}
+.ds-skel-card {
+  position: relative;
+  /* 与拉大后的实际卡片高度一致，避免加载完成时跳动 */
+  height: 174px;
+  border-radius: var(--dd-r-xl);
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line);
+  overflow: hidden;
+}
+.ds-skel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.04), transparent);
+  animation: ds-shimmer 1.6s infinite;
+}
+@keyframes ds-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-skel-card::before { animation: none; }
+}
+
+/* ---------- 卡片网格（参考布局：品牌图标 + 名称 + 指标行） ---------- */
+.ds-list {
+  display: grid;
+  /* 最小列宽加大：卡片更宽，同屏数量更少，信息呼吸感更好 */
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 20px;
+}
+
+/* 信息卡：白底发丝线，无内部分隔线 */
+.ds-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* 内边距加大：卡片整体更高更舒展 */
+  padding: 26px 26px 20px;
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-lg);
+  /* 静置无投影：canvas 底上靠发丝线立住，hover 才升起（Apple 分组卡片语言） */
+  box-shadow: none;
+  transition: box-shadow 0.25s var(--dd-ease), border-color 0.2s var(--dd-ease), transform 0.25s var(--dd-ease-out);
+}
+/* Apple 触感：hover 轻抬 1px + 影子加深，按下回落（transform 动画，GPU 合成） */
+.ds-card:hover {
+  box-shadow: var(--dd-shadow-2);
+  transform: translateY(-1px);
+}
+.ds-card:active {
+  transform: translateY(0) scale(0.998);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-card,
+  .ds-card:hover,
+  .ds-card:active {
+    transform: none;
+  }
+}
+/* 选中态：只留 1px accent 描边（3px 光环太刺眼），绿色「使用中」角标已承担语义 */
+.ds-card.active {
+  border-color: var(--dd-accent);
+}
+.ds-card.active:hover {
+  box-shadow: var(--dd-shadow-2);
+}
+
+.ds-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.ds-card-head:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* 数据库品牌图标（PostgreSQL 大象官方 logo，柔色瓷砖） */
+.ds-card-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: #eef2fb;
+  /* 材质边缘：内发丝环 + 1px 轻投影，与导航栏 logo 瓷砖同一语言 */
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.ds-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ds-card-namerow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ds-card-name {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--dd-text-1);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 「使用中」状态角标（真实语义状态，绿色保留） */
+.ds-card-status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.ds-card-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ds-card-type {
+  font-size: 13px;
+  color: var(--dd-text-3);
+}
+/* 真实连接串（恢复自旧版卡片）：username@host:port/db，超长省略，title 给完整串 */
+.ds-card-conn {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dd-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 指标行：表数（左）+ 操作图标（右），参考图底行 */
+.ds-card-metric {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--dd-text-3);
+}
+/* lucide 默认 24px；本页按上下文字号 1em 继承（等价旧 antd 字体图标行为） */
+.dsrc-page :where(svg.lucide) {
+  width: 1em;
+  height: 1em;
+}
+/* 编辑 sheet / 删除确认打开时锁定背景列表滚动 */
+.dsrc-page.modal-open .dsrc-container {
+  overflow: hidden;
+}
+.spin {
+  animation: dd-spin 0.9s linear infinite;
+}
+@keyframes dd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ds-card-metric > svg.lucide {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+/* 操作钮：静置隐藏，悬停 / 键盘聚焦时浮现（Apple 列表行动作语言，卡片常显更干净） */
+.ds-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.18s var(--dd-ease);
+}
+.ds-card:hover .ds-card-actions,
+.ds-card:focus-within .ds-card-actions {
+  opacity: 1;
+}
+
+/* 圆形图标按钮（iOS 风格） */
+.ds-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dd-text-3);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.ds-act-btn:hover:not(:disabled) {
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-1);
+}
+.ds-act-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 59, 95, 0.1);
+  color: #e02745;
+}
+.ds-act-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ds-act-btn:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 空态 ---------- */
+.ds-empty {
+  margin: 40px auto 0;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 56px 24px;
+}
+.ds-empty-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: #eef2fb;
+  box-shadow: inset 0 0 0 1px #e0eafb;
+  margin-bottom: 8px;
+}
+.ds-empty-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--dd-text-1);
+}
+.ds-empty-sub {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--dd-text-3);
+  max-width: 340px;
+}
+

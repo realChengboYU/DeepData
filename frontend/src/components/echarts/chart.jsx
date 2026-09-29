@@ -152,7 +152,7 @@ function buildOption(spec, type, { stacked = false, dual = false } = {}) {
             right: 4,
             top: "middle",
             type: "scroll",
-            textStyle: { color: "#999999" },
+            textStyle: { color: "#86868b" },
           }
         : undefined,
       tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
@@ -162,7 +162,7 @@ function buildOption(spec, type, { stacked = false, dual = false } = {}) {
           radius: showLegend ? ["40%", "60%"] : ["38%", "66%"],
           center: showLegend ? ["42%", "54%"] : ["50%", "56%"],
           data,
-          label: { formatter: "{b}\n{d}%", color: "#516b91" },
+          label: { formatter: "{b}\n{d}%", color: "#1d1d1f" },
         },
       ],
     };
@@ -268,41 +268,41 @@ export default function Chart({ spec }) {
 
   const showXYToggles = type !== "pie" && type !== "scatter";
 
-  // 段式控制器里的类型项
+  // macOS 分段控件：选中段 = 白底浮起；焦点环 = accent
   const typeBtn = (active, disabled) =>
-    `inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#516b91]/40 ${
+    `inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
       active
-        ? "bg-[#516b91] text-white shadow-sm"
-        : "text-[#5b6b80] hover:text-[#516b91]"
+        ? "bg-white text-[#1d1d1f] shadow-sm"
+        : "text-[#86868b] hover:text-[#1d1d1f]"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
-  // 堆叠/双轴这类开关式小按钮
+  // 堆叠/双轴这类开关式小按钮（选中 = accent 蓝态）
   const toggleBtn = (active, disabled) =>
-    `inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#516b91]/40 ${
+    `inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
       active
-        ? "border-[#516b91] bg-[#eef2f9] text-[#516b91]"
-        : "border-[#dbeafe] bg-white text-[#5b6b80] hover:border-[#c7d3e8] hover:text-[#516b91]"
+        ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
+        : "border-[#e8edf4] bg-white text-[#86868b] hover:border-[#d8e0ea] hover:text-[#48484a]"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   // 右上角的纯图标操作按钮（导出 / 放大 / 收缩 / 关闭）
   const iconBtn = (active, disabled = false) =>
-    `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#516b91]/40 ${
+    `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
       active
-        ? "border-[#516b91] bg-[#eef2f9] text-[#516b91]"
-        : "border-transparent text-[#7d8aa0] hover:bg-[#eef2f9] hover:text-[#516b91]"
+        ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
+        : "border-transparent text-[#86868b] hover:bg-[#f4f7fb] hover:text-[#48484a]"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   return (
     <>
       <div
         data-slot="aui_chart"
-        className="my-2 overflow-hidden rounded-xl border border-[#dbeafe] bg-white"
+        className="my-2 overflow-hidden rounded-xl border border-[#e8edf4] bg-white"
       >
         <div className="flex flex-wrap items-center gap-2 border-b border-[#eef2f7] bg-[#fbfcfe] px-3 py-2">
           {!collapsed && (
             <>
               {/* 图表类型分段控件 */}
-              <div className="inline-flex items-center rounded-lg border border-[#dbeafe] bg-[#f4f7fb] p-0.5">
+              <div className="inline-flex items-center rounded-lg bg-[#eceff4] p-0.5">
                 {CHART_TYPES.map((t) => {
                   const disabled = t.key === "pie" && !canPie;
                   return (
@@ -405,15 +405,15 @@ export default function Chart({ spec }) {
       {focus &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 backdrop-blur-md sm:p-4"
             onClick={() => setFocus(false)}
           >
             <div
-              className="flex max-h-[95vh] w-[min(1500px,96vw)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+              className="flex max-h-[95vh] w-[min(1500px,96vw)] flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_24px_64px_rgba(29,29,31,0.3)]"
               onClick={(e) => e.stopPropagation()}
             >
             <div className="flex flex-wrap items-center gap-2 border-b border-[#eef2f7] bg-[#fbfcfe] px-3 py-2">
-              <span className="min-w-0 truncate text-sm font-medium text-[#516b91]">
+              <span className="min-w-0 truncate text-sm font-medium text-[#1d1d1f]">
                 {spec?.title || "图表"}
               </span>
               <div className="ml-auto flex items-center gap-1">

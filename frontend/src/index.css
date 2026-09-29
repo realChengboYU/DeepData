@@ -16,8 +16,39 @@
   --color-mist: #eff6ff;
   --color-ink: #1e3a8a;
 
-  --font-display: "ZCOOL QingKe HuangYou", system-ui, sans-serif;
+  --font-display: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ===== DeepData Apple 材质设计系统（亮色） =====
+   画布 = 近中性 off-white；文字 = Apple 中性墨色（非蓝）；
+   hover = 中性灰；选中/激活 = 唯一 accent 蓝；
+   发丝线 + 同色相柔影 + 统一圆角标度 */
+:root {
+  --dd-canvas: #f5f7fa;
+  --dd-surface: #ffffff;
+  --dd-material: rgba(255, 255, 255, 0.78);
+  --dd-line: #e8edf4;
+  --dd-line-strong: #d8e0ea;
+  --dd-text-1: #1d1d1f;
+  --dd-text-2: #48484a;
+  --dd-text-3: #86868b;
+  --dd-accent: #2563eb;
+  --dd-accent-deep: #1d4ed8;
+  --dd-accent-ink: #1e3a8a;
+  --dd-tint-hover: rgba(0, 0, 0, 0.045);
+  --dd-tint-active: rgba(37, 99, 235, 0.1);
+  --dd-ring: rgba(37, 99, 235, 0.35);
+  --dd-r-sm: 8px;
+  --dd-r-md: 10px;
+  --dd-r-lg: 14px;
+  --dd-r-xl: 18px;
+  --dd-shadow-1: 0 1px 2px rgba(29, 29, 31, 0.05), 0 1px 6px rgba(29, 29, 31, 0.04);
+  --dd-shadow-2: 0 8px 28px rgba(29, 29, 31, 0.09), 0 2px 8px rgba(29, 29, 31, 0.05);
+  --dd-shadow-3: 0 24px 64px rgba(29, 29, 31, 0.16), 0 4px 16px rgba(29, 29, 31, 0.08);
+  --dd-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dd-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dd-ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.18);
 }
 
 html,
@@ -26,17 +57,18 @@ body,
   height: 100%;
 }
 
+/* 全局键盘焦点环（Apple 语言：accent 描边 + 2px 偏移） */
+:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
-  color: var(--color-ink);
-  background: var(--color-mist);
+  color: var(--dd-text-1);
+  background: var(--dd-canvas);
   -webkit-font-smoothing: antialiased;
-}
-
-/* 品牌艺术字体 */
-.font-display {
-  font-family: var(--font-display);
 }
 
 /* 通用按钮 */
@@ -55,25 +87,7 @@ body {
   transform: translateY(1px);
 }
 
-/* 动态极光背景（左侧品牌面板） */
-@keyframes orb-drift-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -20px) scale(1.12); }
-}
-@keyframes orb-drift-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-26px, 18px) scale(1.08); }
-}
-@keyframes orb-drift-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(18px, 24px) scale(1.1); }
-}
-@keyframes orb-drift-4 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-20px, -14px) scale(1.06); }
-}
-
-/* macOS 欢迎屏入场 */
+/* 入场动画（登录页使用） */
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -84,22 +98,6 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
     filter: blur(0);
-  }
-}
-
-/* 登录按钮背后光晕旋转 */
-@keyframes aurora-spin {
-  to {
-    transform: rotate(360deg) scale(1.04);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .rise {
-    animation: rise-in 1.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .cta-glow {
-    animation: aurora-spin 12s linear infinite;
   }
 }
 

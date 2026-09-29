@@ -172,21 +172,36 @@ export function updateCuratedTable(id, table, payload) {
     .then((res) => res.data)
 }
 
-// ===== 设置：对话模型配置 + 测试连接 =====
-
-// 读取当前用户生效的模型配置（Key 打码回传：{ base_url, model, has_key, key_masked }）
-export function getLlmConfig() {
-  return retry(() => api.get('/settings/llm').then((res) => res.data))
-}
-
-// 保存模型配置（api_key 留空则保留已有）
-export function saveLlmConfig(payload) {
-  return api.put('/settings/llm', payload).then((res) => res.data)
-}
+// ===== 设置：对话模型配置（多模型） + 测试连接 =====
 
 // 测试模型连接（不保存；空字段回退到已存 / 默认配置）
 export function testLlmConfig(payload) {
   return api.post('/settings/llm/test', payload, { timeout: 40000 }).then((res) => res.data)
+}
+
+// 列出当前用户的全部模型配置（Key 打码，默认模型在前）
+export function getLlmModels() {
+  return retry(() => api.get('/settings/llm/models').then((res) => res.data))
+}
+
+// 新建模型配置：payload = { name, base_url, model, api_key }（第一个自动设为默认）
+export function createLlmModel(payload) {
+  return api.post('/settings/llm/models', payload).then((res) => res.data)
+}
+
+// 更新模型配置（空字段保留已有；api_key 留空则不改动）
+export function updateLlmModel(modelId, payload) {
+  return api.put(`/settings/llm/models/${encodeURIComponent(modelId)}`, payload).then((res) => res.data)
+}
+
+// 删除模型配置（删默认时后端自动提升剩余最早一条为默认）
+export function deleteLlmModel(modelId) {
+  return api.delete(`/settings/llm/models/${encodeURIComponent(modelId)}`).then((res) => res.data)
+}
+
+// 设为默认模型（聊天未显式选择时使用）
+export function setLlmModelDefault(modelId) {
+  return api.post(`/settings/llm/models/${encodeURIComponent(modelId)}/default`).then((res) => res.data)
 }
 
 export default api

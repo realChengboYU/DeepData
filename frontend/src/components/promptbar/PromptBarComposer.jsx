@@ -1,14 +1,9 @@
 import { useAuiState } from '@assistant-ui/react';
 import { useCallback } from 'react';
-import {
-  Calendar03Icon,
-  ChartLineData01Icon,
-  File02Icon,
-  Globe02Icon,
-  Mail01Icon,
-} from '@hugeicons/core-free-icons';
+import { Calendar, ChartLine, FileText, Globe, Mail } from 'lucide-react';
 import PromptBar from './PromptBar';
 import { useComposerControls } from './controls';
+import { useModelsStore } from '../../store/models';
 
 // 平台主题色（DeepData 蓝调）
 const THEME = {
@@ -20,11 +15,11 @@ const THEME = {
 
 // 数据问答平台菜单项（不含附件 attach，避免死按钮）
 const SOURCES = [
-  { key: 'web', name: 'Web search', description: 'Live results', icon: Globe02Icon },
-  { key: 'sales', name: 'Sales data', description: 'Revenue and churn', icon: ChartLineData01Icon },
-  { key: 'docs', name: 'Documents', description: 'Specs, notes, briefs', icon: File02Icon },
-  { key: 'mail', name: 'Mail', description: 'Read and draft mail', icon: Mail01Icon },
-  { key: 'calendar', name: 'Calendar', description: 'Events and availability', icon: Calendar03Icon },
+  { key: 'web', name: 'Web search', description: 'Live results', icon: Globe },
+  { key: 'sales', name: 'Sales data', description: 'Revenue and churn', icon: ChartLine },
+  { key: 'docs', name: 'Documents', description: 'Specs, notes, briefs', icon: FileText },
+  { key: 'mail', name: 'Mail', description: 'Read and draft mail', icon: Mail },
+  { key: 'calendar', name: 'Calendar', description: 'Events and availability', icon: Calendar },
 ];
 
 const COMMANDS = [
@@ -35,22 +30,21 @@ const COMMANDS = [
   { key: 'tasks', name: '/tasks', description: 'Turn this into a to-do list' },
 ];
 
-// 模型选择器：显示并可在输入栏切换（当前后端为单模型，选择结果会随提问一起发送）
-const MODELS = [
-  { key: 'deepseek', name: 'DeepSeek', tag: '默认' },
-  { key: 'nova-mini', name: 'Nova Mini', tag: 'Fast' },
-  { key: 'nova-2', name: 'Nova 2', tag: 'Legacy' },
-];
-
 export function PromptBarComposer() {
   const { onStop, send, composerRef } = useComposerControls();
   // 是否正在生成回复：驱动「发送 → 停止」的箭头变形
   const busy = useAuiState((s) => s.thread.isRunning);
+  // 模型选择器：真实数据来自「设置 → 模型配置」（多模型 store，选中项持久化）
+  const models = useModelsStore((s) => s.models);
+  const selectedId = useModelsStore((s) => s.selectedId);
 
   const handleSend = useCallback(
-    (text, _opts) => {
+    (text, opts) => {
       const t = (text || '').trim();
       if (!t) return;
+      // 把输入框当前选中的模型同步到全局 store，随后请求会携带 modelId
+      const key = opts?.model?.key;
+      if (key) useModelsStore.getState().select(key);
       // 走 Chat 里 assistant-ui 外部 store 的 onNew 流程（含会话隔离 + 流式输出）
       send?.({ role: 'user', content: t });
     },
@@ -63,7 +57,12 @@ export function PromptBarComposer() {
         placeholder="有问题随时问我…"
         sources={SOURCES}
         commands={COMMANDS}
-        models={MODELS}
+        models={models.map((m) => ({
+          key: m.id,
+          name: m.name,
+          tag: m.is_default ? '默认' : m.model || '自定义',
+        }))}
+        defaultModel={selectedId}
         efforts={[]}
         busy={busy}
         onSend={handleSend}
@@ -74,7 +73,7 @@ export function PromptBarComposer() {
         menuBackground={THEME.menuBackground}
         sparkColor={THEME.sparkColor}
         width={704}
-        radius={16}
+        radius={18}
         maxRows={5}
       />
     </div>

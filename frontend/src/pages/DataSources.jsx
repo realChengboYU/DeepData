@@ -1,933 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  CheckCircleFilled,
-  CheckCircleOutlined,
-  CloseOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  EyeInvisibleOutlined,
-  EyeOutlined,
-  LoadingOutlined,
-  MessageOutlined,
-  PlusOutlined,
-  SearchOutlined,
-  TableOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons'
+import { X } from 'lucide-react'
 import { useI18n } from '../i18n'
-import {
-  createDataSource,
-  deleteDataSource,
-  getDataSources,
-  getCuratedTables,
-  introspectFields,
-  introspectPreview,
-  introspectSchemasRaw,
-  introspectTables,
-  saveCuratedTables,
-  setDataSourceActive,
-  testDataSourceRaw,
-  updateDataSource,
-} from '../api'
+import { deleteDataSource, getDataSources, setDataSourceActive } from '../api'
+import { DbTypeIcon } from '../components/datasource/DbTypeIcon'
+import DataSourceForm from '../components/datasource/DataSourceForm'
+import DataSourceList from '../components/datasource/DataSourceList'
+import TableSelectStep from '../components/datasource/TableSelectStep'
 import '../components/datasource/datasource.css'
-import pgIcon from '../assets/ds/pg.svg'
-import mysqlIcon from '../assets/ds/mysql.svg'
-import sqliteIcon from '../assets/ds/sqlite.svg'
+import '../components/datasource/overlays.css'
 
-// 数据库类型（当前只支持 PostgreSQL，其余为占位，供后续扩展）
-const DB_TYPES = [
-  { id: 'postgresql', name: 'PostgreSQL', available: true, descKey: 'ds.relation' },
-  { id: 'mysql', name: 'MySQL', available: false, descKey: 'ds.relation' },
-  { id: 'sqlite', name: 'SQLite', available: false, descKey: 'ds.embedded' },
-]
-
-// 连接串预览（镜像后端 build_pg_url 的结构，密码打码）
-function connPreview(host, port, dbname, username, hasPassword, hasSsl) {
-  const h = host || '主机'
-  const p = port || '5432'
-  const db = dbname || '数据库'
-  const u = username || '用户名'
-  const pw = hasPassword ? '••••••••' : '······'
-  const ssl = hasSsl ? '?sslmode=require' : ''
-  return `postgresql+psycopg://${u}:${pw}@${h}:${p}/${db}${ssl}`
-}
-
-// 卡片展示用：ISO 时间 → YYYY-MM-DD
-function fmtDate(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-const EMPTY = {
-  name: '', host: '', port: 5432, dbname: '', username: '', password: '', description: '',
-  schema: 'public', timeout: 6, pool_size: 5, ssl: false,
-}
-
-// 各数据库品牌图标（按类型选用，取代通用圆柱体）
-const DB_ICONS = { postgresql: pgIcon, mysql: mysqlIcon, sqlite: sqliteIcon }
-function DbTypeIcon({ type = 'postgresql', size = 24, className }) {
-  return <img src={DB_ICONS[type] || pgIcon} width={size} height={size} className={className} alt="" aria-hidden="true" />
-}
-
-// 第 1 步：选择数据库类型
-function TypeSelectStep({ onPick }) {
-  const { t } = useI18n()
-  const [sel, setSel] = useState('postgresql')
-  const selType = DB_TYPES.find((x) => x.id === sel)
-  return (
-    <div className="dsrc-flow">
-      <div className="dsrc-flow-head">
-        <h3 className="dsrc-flow-title">{t('ds.chooseType')}</h3>
-        <p className="dsrc-flow-sub">{t('ds.chooseTypeSub')}</p>
-      </div>
-      <div className="dsrc-types" role="radiogroup" aria-label={t('ds.chooseType')}>
-        {DB_TYPES.map((tp) => {
-          const selected = sel === tp.id
-          return (
-            <button
-              key={tp.id}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={!tp.available}
-              className={`dsrc-type${selected ? ' selected' : ''}`}
-              onClick={() => tp.available && setSel(tp.id)}
-            >
-              <span className={`dsrc-type-glyph${tp.available ? '' : ' soon'}`} aria-hidden="true">
-                <DbTypeIcon type={tp.id} size={30} />
-              </span>
-              <span className="dsrc-type-body">
-                <span className="dsrc-type-name">{tp.name}</span>
-                <span className="dsrc-type-desc">{t(tp.descKey)}</span>
-              </span>
-              <span className={`dsrc-type-status${tp.available ? '' : ' soon'}`}>
-                {tp.available ? t('ds.available') : t('ds.comingSoon')}
-              </span>
-              {selected && tp.available && (
-                <span className="dsrc-type-check" aria-hidden="true">
-                  <CheckCircleFilled />
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-      <div className="dsrc-flow-actions">
-        <button
-          type="button"
-          className="ds-btn ds-btn-primary"
-          disabled={!selType?.available}
-          onClick={() => onPick(sel)}
-        >
-          {t('ds.continue')}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// 第 2 步：配置连接（新建 / 编辑）——「下一步」先测试连通，再创建/更新数据源并进入选表步
-function DataSourceForm({ editing, existingId, onNext, onPrev, onError }) {
-  const { t } = useI18n()
-  const isEdit = !!editing
-  const targetId = isEdit ? editing.id : existingId
-  const [form, setForm] = useState(() =>
-    isEdit
-      ? {
-          name: editing.name || '',
-          host: editing.host || '',
-          port: editing.port || 5432,
-          dbname: editing.dbname || '',
-          username: editing.username || '',
-          password: '',
-          description: editing.description || '',
-          schema: editing.schema || 'public',
-          timeout: editing.timeout || 6,
-          pool_size: editing.pool_size || 5,
-          ssl: !!editing.ssl,
-        }
-      : EMPTY,
-  )
-  const [showPwd, setShowPwd] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState(null)
-  const [showAdv, setShowAdv] = useState(isEdit) // 高级选项：新建默认收起
-  const [schemaList, setSchemaList] = useState([])
-  const [fetchingSchema, setFetchingSchema] = useState(false)
-
-  // 「获取 Schema」：按当前连接信息列出库内 schema
-  async function fetchSchemas() {
-    if (fetchingSchema) return
-    setFetchingSchema(true)
-    try {
-      const r = await introspectSchemasRaw({
-        host: form.host.trim(),
-        port: Number(form.port) || 5432,
-        dbname: form.dbname.trim(),
-        username: form.username.trim(),
-        password: form.password,
-        ssl: form.ssl,
-      })
-      setSchemaList(r?.schemas ?? [])
-    } catch (e) {
-      setSchemaList([])
-      onError?.(e?.response?.data?.detail || t('ds.tablesReadFail'))
-    } finally {
-      setFetchingSchema(false)
-    }
-  }
-
-  const set = (k, v) => {
-    setForm((f) => ({ ...f, [k]: v }))
-    if (k !== 'password') setTestResult(null)
-  }
-  const canSave = form.name.trim() && form.host.trim() && form.dbname.trim() && form.username.trim()
-
-  const rawConn = () => ({
-    host: form.host.trim(),
-    port: Number(form.port) || 5432,
-    dbname: form.dbname.trim(),
-    username: form.username.trim(),
-    password: form.password,
-    schema: form.schema.trim() || 'public',
-    ssl: !!form.ssl,
-  })
-
-  async function doTest() {
-    setTesting(true)
-    setTestResult(null)
-    try {
-      const r = await testDataSourceRaw(rawConn())
-      setTestResult(r)
-    } catch (e) {
-      setTestResult({ ok: false, message: e?.response?.data?.detail || t('ds.testFail') })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  // 下一步：先测试连通（gating），通过后创建/更新数据源并进入选表步
-  async function next() {
-    if (!canSave || saving) return
-    setSaving(true)
-    setTestResult(null)
-    try {
-      const tr = await testDataSourceRaw(rawConn())
-      if (!tr?.ok) {
-        setTestResult(tr || { ok: false, message: t('ds.testFail') })
-        return
-      }
-      const payload = {
-        name: form.name.trim(),
-        host: form.host.trim(),
-        port: Number(form.port) || 5432,
-        dbname: form.dbname.trim(),
-        username: form.username.trim(),
-        description: form.description || '',
-        schema: form.schema.trim() || 'public',
-        timeout: Number(form.timeout) || 6,
-        pool_size: Number(form.pool_size) || 5,
-        ssl: !!form.ssl,
-      }
-      if (targetId) {
-        if (form.password) payload.password = form.password
-        await updateDataSource(targetId, payload)
-        onNext(targetId, false)
-      } else {
-        payload.password = form.password || ''
-        const r = await createDataSource(payload)
-        onNext(r?.id, true)
-      }
-    } catch (e) {
-      const detail = e?.response?.data?.detail
-      setTestResult({ ok: false, message: detail || t('ds.saveFail') })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="dsrc-flow">
-      <div className="dsrc-flow-head">
-        <h3 className="dsrc-flow-title">
-          {t('ds.configure')} <span className="dsrc-flow-badge">PostgreSQL</span>
-        </h3>
-      </div>
-
-      <div className="ds-field">
-        <label htmlFor="ds-name">{t('ds.name')}</label>
-        <input
-          id="ds-name"
-          className="ds-input"
-          value={form.name}
-          placeholder="订单库"
-          autoComplete="off"
-          onChange={(e) => set('name', e.target.value)}
-        />
-      </div>
-
-      <div className="ds-row2">
-        <div className="ds-field ds-field-grow">
-          <label htmlFor="ds-host">{t('ds.host')}</label>
-          <input
-            id="ds-host"
-            className="ds-input"
-            value={form.host}
-            placeholder="10.0.0.5 / 主机名"
-            autoComplete="off"
-            onChange={(e) => set('host', e.target.value)}
-          />
-        </div>
-        <div className="ds-field ds-field-port">
-          <label htmlFor="ds-port">{t('ds.port')}</label>
-          <input
-            id="ds-port"
-            className="ds-input"
-            type="number"
-            min="1"
-            max="65535"
-            value={form.port}
-            onChange={(e) => set('port', e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="ds-field">
-        <label htmlFor="ds-db">{t('ds.database')}</label>
-        <input
-          id="ds-db"
-          className="ds-input"
-          value={form.dbname}
-          placeholder="order_db"
-          autoComplete="off"
-          onChange={(e) => set('dbname', e.target.value)}
-        />
-      </div>
-
-      <div className="ds-field">
-        <label htmlFor="ds-schema">{t('ds.schema')}</label>
-        <div className="ds-schema-row">
-          <input
-            id="ds-schema"
-            className="ds-input ds-input-mono"
-            value={form.schema}
-            placeholder="public"
-            autoComplete="off"
-            onChange={(e) => set('schema', e.target.value)}
-          />
-          <button
-            type="button"
-            className="ds-btn ds-btn-ghost ds-btn-sm"
-            disabled={fetchingSchema || !form.host.trim() || !form.dbname.trim() || !form.username.trim()}
-            onClick={fetchSchemas}
-          >
-            {fetchingSchema ? <LoadingOutlined spin /> : <ThunderboltOutlined />}
-            {fetchingSchema ? t('ds.fetching') : t('ds.fetchSchemas')}
-          </button>
-        </div>
-        {schemaList.length > 0 && (
-          <div className="ds-schema-chips">
-            {schemaList.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`ds-schema-chip${s === form.schema ? ' on' : ''}`}
-                onClick={() => set('schema', s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-        <span className="ds-hint">{t('ds.schemaHint')}</span>
-      </div>
-
-      <div className="ds-field">
-        <label htmlFor="ds-user">{t('ds.username')}</label>
-        <input
-          id="ds-user"
-          className="ds-input ds-input-mono"
-          value={form.username}
-          placeholder="postgres"
-          autoComplete="off"
-          onChange={(e) => set('username', e.target.value)}
-        />
-      </div>
-
-      <div className="ds-field">
-        <label htmlFor="ds-pwd">{t('ds.password')}</label>
-        <div className="ds-pwd-wrap">
-          <input
-            id="ds-pwd"
-            className="ds-input"
-            type={showPwd ? 'text' : 'password'}
-            value={form.password}
-            placeholder={isEdit ? t('ds.passwordKeep') : t('ds.password')}
-            autoComplete="new-password"
-            onChange={(e) => set('password', e.target.value)}
-          />
-          <button
-            type="button"
-            className="ds-pwd-toggle"
-            aria-label={showPwd ? '隐藏密码' : '显示密码'}
-            onClick={() => setShowPwd((s) => !s)}
-          >
-            {showPwd ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-          </button>
-        </div>
-        {isEdit && !form.password && <span className="ds-hint">{t('ds.passwordKeepHint')}</span>}
-      </div>
-
-      {/* 连接串预览——随输入实时拼出（密码打码），本页唯一的重元素 */}
-      <div className="ds-conn" aria-live="polite">
-        <div className="ds-conn-label">{t('ds.connString')}</div>
-        <code className="ds-conn-code">{connPreview(form.host, form.port, form.dbname, form.username, !!form.password, !!form.ssl)}</code>
-      </div>
-
-      {/* 高级选项：超时 / 连接池 / SSL（新建默认收起）*/}
-      <div className="ds-adv">
-        <button type="button" className="ds-adv-toggle" onClick={() => setShowAdv((s) => !s)}>
-          <span aria-hidden="true">{showAdv ? '▾' : '▸'}</span> {t('ds.advanced')}
-        </button>
-        {showAdv && (
-          <div className="ds-adv-body">
-            <div className="ds-row2">
-              <div className="ds-field ds-field-grow">
-                <label htmlFor="ds-timeout">{t('ds.timeout')}</label>
-                <input
-                  id="ds-timeout"
-                  className="ds-input"
-                  type="number"
-                  min="1"
-                  max="300"
-                  value={form.timeout}
-                  onChange={(e) => set('timeout', e.target.value)}
-                />
-              </div>
-              <div className="ds-field ds-field-grow">
-                <label htmlFor="ds-pool">{t('ds.poolSize')}</label>
-                <input
-                  id="ds-pool"
-                  className="ds-input"
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={form.pool_size}
-                  onChange={(e) => set('pool_size', e.target.value)}
-                />
-              </div>
-            </div>
-            <label className="ds-adv-ssl">
-              <input
-                type="checkbox"
-                checked={!!form.ssl}
-                onChange={(e) => set('ssl', e.target.checked)}
-              />
-              {t('ds.ssl')}
-            </label>
-          </div>
-        )}
-      </div>
-
-      {testResult && (
-        <div className={`ds-test ${testResult.ok ? 'ok' : 'err'}`} role="status">
-          {testResult.ok ? <CheckCircleFilled /> : <CloseOutlined />}
-          <span>{testResult.message}</span>
-        </div>
-      )}
-
-      <div className="ds-form-actions">
-        {!isEdit && (
-          <button type="button" className="ds-btn ds-btn-ghost" disabled={saving} onClick={onPrev}>
-            ← {t('ds.prev')}
-          </button>
-        )}
-        <button
-          type="button"
-          className="ds-btn ds-btn-ghost"
-          disabled={!canSave || testing || saving}
-          onClick={doTest}
-        >
-          {testing ? <LoadingOutlined spin /> : <ThunderboltOutlined />}
-          {t('ds.test')}
-        </button>
-        <button type="button" className="ds-btn ds-btn-primary" disabled={!canSave || saving} onClick={next}>
-          {saving ? <LoadingOutlined spin /> : null}
-          {t('ds.next')} →
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// 第 3 步：选择表（左表清单 + 右字段/注释/预览）
-function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, onError }) {
-  const { t } = useI18n()
-  // 每张表带 fields:[{field_name, field_type, checked, custom_comment, enum_values}]
-  const [tables, setTables] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [loadErr, setLoadErr] = useState('')
-  const [search, setSearch] = useState('')
-  const [active, setActive] = useState('')
-  const [fieldsLoading, setFieldsLoading] = useState(false)
-  const [preview, setPreview] = useState(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const tablesRef = useRef([])
-  useEffect(() => {
-    tablesRef.current = tables
-  }, [tables])
-
-  // 载入目标库的表 + 已策展状态（勾选/注释/字段）
-  useEffect(() => {
-    let live = true
-    setLoading(true)
-    setLoadErr('')
-    setTables([])
-    setActive('')
-    setPreview(null)
-    const curP = getCuratedTables(sourceId).catch(() => ({ tables: [] }))
-    introspectTables(sourceId)
-      .then(async (d) => {
-        const cd = await curP
-        if (!live) return
-        const curatedMap = {}
-        for (const ct of cd?.tables ?? []) curatedMap[ct.table_name] = ct
-        const list = (d?.tables ?? []).map((x) => {
-          const cur = curatedMap[x.table_name]
-          return {
-            table_name: x.table_name,
-            table_comment: x.table_comment || '',
-            custom_comment: cur?.custom_comment || '',
-            checked: cur ? cur.checked : true,
-            fields: cur?.fields ?? [],
-          }
-        })
-        setTables(list)
-        if (list.length) setActive(list[0].table_name)
-      })
-      .catch((e) => {
-        if (live) setLoadErr(e?.response?.data?.detail || t('ds.tablesReadFail'))
-      })
-      .finally(() => live && setLoading(false))
-    return () => {
-      live = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceId])
-
-  // 切换到某张表 → 载入其字段（live 字段 + 已有勾选/注释/枚举 状态合并）
-  useEffect(() => {
-    if (!active) return
-    let live = true
-    setFieldsLoading(true)
-    setPreview(null)
-    introspectFields(sourceId, active)
-      .then((d) => {
-        if (!live) return
-        const liveFields = d?.fields ?? []
-        const prev = tablesRef.current.find((x) => x.table_name === active)?.fields ?? []
-        const prevMap = {}
-        for (const p of prev) prevMap[p.field_name] = p
-        const merged = liveFields.map((f) => {
-          const p = prevMap[f.field_name]
-          return {
-            field_name: f.field_name,
-            field_type: f.field_type || '',
-            checked: p ? p.checked : true,
-            custom_comment: p?.custom_comment || '',
-            enum_values: p?.enum_values || '',
-          }
-        })
-        setTables((ts) => ts.map((x) => (x.table_name === active ? { ...x, fields: merged } : x)))
-      })
-      .catch(() => {})
-      .finally(() => live && setFieldsLoading(false))
-    return () => {
-      live = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, sourceId])
-
-  const kw = search.trim().toLowerCase()
-  const filtered = kw ? tables.filter((x) => x.table_name.toLowerCase().includes(kw)) : tables
-  const checkedCount = tables.filter((x) => x.checked).length
-  const allChecked = tables.length > 0 && checkedCount === tables.length
-  const activeRow = tables.find((x) => x.table_name === active)
-
-  const setChecked = (name, val) => setTables((ts) => ts.map((x) => (x.table_name === name ? { ...x, checked: val } : x)))
-  const setComment = (name, val) => setTables((ts) => ts.map((x) => (x.table_name === name ? { ...x, custom_comment: val } : x)))
-  const setAll = (val) => setTables((ts) => ts.map((x) => ({ ...x, checked: val })))
-  // 更新活动表某字段的 勾选 / 注释 / 枚举
-  const setField = (tableName, fieldName, key, val) =>
-    setTables((ts) =>
-      ts.map((x) =>
-        x.table_name === tableName
-          ? { ...x, fields: (x.fields || []).map((f) => (f.field_name === fieldName ? { ...f, [key]: val } : f)) }
-          : x,
-      ),
-    )
-
-  async function doPreview() {
-    if (!active || previewLoading) return
-    setPreviewLoading(true)
-    setPreview(null)
-    try {
-      setPreview(await introspectPreview(sourceId, active, 10))
-    } catch (e) {
-      onError?.(e?.response?.data?.detail || t('ds.tablesReadFail'))
-    } finally {
-      setPreviewLoading(false)
-    }
-  }
-
-  async function save() {
-    if (saving || !tables.length) return
-    setSaving(true)
-    try {
-      await saveCuratedTables(sourceId, tables)
-      onSaved()
-    } catch (e) {
-      onError?.(e?.response?.data?.detail || t('ds.saveFail'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="dsrc-flow dsrc-flow-tables">
-      <div className="dsrc-flow-head">
-        <h3 className="dsrc-flow-title">
-          {t('ds.chooseTables')} <span className="dsrc-flow-badge">PostgreSQL</span>
-        </h3>
-        <p className="dsrc-flow-sub">{t('ds.chooseTablesSub')}</p>
-      </div>
-
-      {loadErr ? (
-        <div className="ds-test err" role="alert">
-          <CloseOutlined />
-          <span>{loadErr}</span>
-        </div>
-      ) : (
-        <div className="dsrc-tables">
-          {/* 左：表清单 */}
-          <div className="dsrc-tables-left">
-            <div className="dsrc-tables-tools">
-              <label className="dsrc-tables-search">
-                <SearchOutlined />
-                <input value={search} placeholder={t('ds.searchTables')} onChange={(e) => setSearch(e.target.value)} />
-              </label>
-              <label className="dsrc-tables-all">
-                <input type="checkbox" checked={allChecked} onChange={(e) => setAll(e.target.checked)} />
-                {t('ds.selectAll')}
-              </label>
-            </div>
-            <div className="dsrc-tables-count">
-              {t('ds.selectedCount', { n: checkedCount, total: tables.length })}
-            </div>
-            {loading ? (
-              <div className="dsrc-tables-state">
-                <LoadingOutlined spin /> {t('ds.tablesLoading')}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="dsrc-tables-state">{t('ds.tablesEmpty')}</div>
-            ) : (
-              <ul className="dsrc-tables-list">
-                {filtered.map((x) => (
-                  <li
-                    key={x.table_name}
-                    className={`dsrc-table${active === x.table_name ? ' active' : ''}`}
-                    onClick={() => setActive(x.table_name)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={x.checked}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setChecked(x.table_name, e.target.checked)}
-                      aria-label={x.table_name}
-                    />
-                    <span className="dsrc-table-name">{x.table_name}</span>
-                    {x.custom_comment && <span className="dsrc-table-note" aria-hidden="true">✎</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* 右：字段 / 注释 / 预览 */}
-          <div className="dsrc-tables-right">
-            {!active ? (
-              <div className="dsrc-tables-state">{t('ds.noActiveTable')}</div>
-            ) : (
-              <>
-                <div className="dsrc-ds-name">
-                  <code className="ds-conn-code-inline">{active}</code>
-                  {activeRow?.table_comment && (
-                    <span className="dsrc-ds-comment" title={t('ds.tableComment')}>
-                      {activeRow.table_comment}
-                    </span>
-                  )}
-                </div>
-
-                <div className="ds-field">
-                  <label htmlFor="ds-custom-comment">{t('ds.customComment')}</label>
-                  <textarea
-                    id="ds-custom-comment"
-                    className="ds-input ds-input-area"
-                    rows={2}
-                    value={activeRow?.custom_comment || ''}
-                    placeholder={t('ds.customCommentPh')}
-                    onChange={(e) => setComment(active, e.target.value)}
-                  />
-                </div>
-
-                <div className="dsrc-fields">
-                  <div className="dsrc-fields-head">
-                    <span className="dsrc-fields-title">
-                      {t('ds.fields')}
-                      {(activeRow?.fields || []).length > 0 && (
-                        <span className="dsrc-fields-n">
-                          {t('ds.fieldChecked', {
-                            n: (activeRow?.fields || []).filter((f) => f.checked).length,
-                            total: (activeRow?.fields || []).length,
-                          })}
-                        </span>
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      className="ds-btn ds-btn-ghost ds-btn-sm"
-                      disabled={previewLoading}
-                      onClick={doPreview}
-                    >
-                      {previewLoading ? <LoadingOutlined spin /> : <EyeOutlined />} {t('ds.preview')}
-                    </button>
-                  </div>
-                  {preview && preview.columns.length ? (
-                    <div className="dsrc-preview">
-                      <table className="dsrc-preview-table">
-                        <thead>
-                          <tr>
-                            {preview.columns.map((c) => (
-                              <th key={c}>{c}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {preview.rows.map((r, i) => (
-                            <tr key={i}>
-                              {r.map((v, j) => (
-                                <td key={j}>{v == null ? '' : String(v)}</td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {preview.rows.length === 0 && <div className="dsrc-tables-state">{t('ds.previewEmpty')}</div>}
-                    </div>
-                  ) : fieldsLoading ? (
-                    <div className="dsrc-tables-state">
-                      <LoadingOutlined spin />
-                    </div>
-                  ) : (activeRow?.fields || []).length ? (
-                    <ul className="dsrc-fields-list">
-                      {(activeRow?.fields || []).map((f) => (
-                        <li key={f.field_name} className={`dsrc-fieldrow${f.checked ? '' : ' off'}`}>
-                          <label className="dsrc-fieldrow-head">
-                            <input
-                              type="checkbox"
-                              checked={f.checked}
-                              onChange={(e) => setField(active, f.field_name, 'checked', e.target.checked)}
-                            />
-                            <code className="dsrc-field-name">{f.field_name}</code>
-                            <span className="dsrc-field-type">{f.field_type}</span>
-                          </label>
-                          {f.checked && (
-                            <div className="dsrc-fieldrow-inputs">
-                              <input
-                                className="ds-input ds-input-sm"
-                                placeholder={`${t('ds.fieldComment')} · ${t('ds.fieldCommentPh')}`}
-                                value={f.custom_comment}
-                                onChange={(e) => setField(active, f.field_name, 'custom_comment', e.target.value)}
-                              />
-                              <input
-                                className="ds-input ds-input-sm"
-                                placeholder={`${t('ds.fieldEnum')} · ${t('ds.fieldEnumPh')}`}
-                                value={f.enum_values}
-                                onChange={(e) => setField(active, f.field_name, 'enum_values', e.target.value)}
-                              />
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="dsrc-tables-state">{t('ds.tablesEmpty')}</div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="ds-form-actions">
-        <button type="button" className="ds-btn ds-btn-ghost" disabled={saving} onClick={onPrev}>
-          ← {t('ds.prev')}
-        </button>
-        <button type="button" className="ds-btn ds-btn-ghost" disabled={saving} onClick={onCancel}>
-          {t('ds.cancel')}
-        </button>
-        <button
-          type="button"
-          className="ds-btn ds-btn-primary"
-          disabled={loading || saving || !tables.length}
-          onClick={save}
-        >
-          {saving ? <LoadingOutlined spin /> : <CheckCircleFilled />} {t('ds.save')}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// 数据源列表
-function DataSourceList({ sources, activeId, busy, loading, onNew, onEdit, onViewTables, onAsk, onSetActive, onRemove }) {
-  const { t } = useI18n()
-  const [search, setSearch] = useState('')
-  if (!loading && sources.length === 0) {
-    return (
-      <div className="ds-empty dsrc-empty">
-        <div className="ds-empty-mark" aria-hidden="true">
-          <DbTypeIcon type="postgresql" size={40} />
-        </div>
-        <p className="ds-empty-title">{t('ds.emptyTitle')}</p>
-        <p className="ds-empty-sub">{t('ds.emptySub')}</p>
-        <button type="button" className="ds-btn ds-btn-primary" onClick={onNew}>
-          <PlusOutlined /> {t('ds.new')}
-        </button>
-      </div>
-    )
-  }
-  const kw = search.trim().toLowerCase()
-  const shown = kw ? sources.filter((s) => (s.name || '').toLowerCase().includes(kw)) : sources
-
-  return (
-    <div className="ds-listwrap">
-      <div className="ds-toolbar">
-        <label className="ds-toolbar-search">
-          <SearchOutlined />
-          <input
-            value={search}
-            placeholder={t('ds.searchDs')}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
-        <button type="button" className="ds-btn ds-btn-primary" onClick={onNew}>
-          <PlusOutlined /> {t('ds.new')}
-        </button>
-      </div>
-
-      {shown.length === 0 ? (
-        <p className="ds-nomatch">{t('ds.noMatch')}</p>
-      ) : (
-        <div className="ds-list">
-          {shown.map((s) => {
-            const active = s.id === activeId
-            const conn = `${s.username ? `${s.username}@` : ''}${s.host}:${s.port}/${s.dbname}`
-            return (
-              <article key={s.id} className={`ds-card${active ? ' active' : ''}`}>
-                <div
-                  className="ds-card-head"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${t('ds.ask')} · ${s.name}`}
-                  onClick={() => onAsk && onAsk(s.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      if (onAsk) onAsk(s.id)
-                    }
-                  }}
-                >
-                  <span className="ds-card-icon" aria-hidden="true">
-                    <DbTypeIcon type={s.type || 'postgresql'} size={52} />
-                  </span>
-                  <div className="ds-card-info">
-                    <div className="ds-card-namerow">
-                      <span className="ds-card-name">{s.name}</span>
-                      {active ? <span className="ds-card-status">{t('ds.active')}</span> : null}
-                    </div>
-                    <span className="ds-card-type">
-                      PostgreSQL{s.schema && s.schema !== 'public' ? ` · ${s.schema}` : ''}
-                    </span>
-                    <code className="ds-card-conn">{conn}</code>
-                  </div>
-                </div>
-                <div className="ds-card-foot">
-                  <div className="ds-card-meta">
-                    <span className="ds-card-num">{typeof s.num === 'number' ? s.num : 0}</span>
-                    <span className="ds-card-unit">{t('ds.tablesShort')}</span>
-                    <span className="ds-card-sep" aria-hidden="true" />
-                    <span className="ds-card-time">{fmtDate(s.created_at)}</span>
-                  </div>
-                  <div className="ds-card-actions-row">
-                    <span className="ds-card-actions">
-                      {!active ? (
-                        <button
-                          type="button"
-                          className="ds-act-btn"
-                          disabled={busy === s.id}
-                          title={t('ds.setActive')}
-                          onClick={() => onSetActive(s.id)}
-                        >
-                          <CheckCircleOutlined />
-                        </button>
-                      ) : null}
-                      <button type="button" className="ds-act-btn" title={t('ds.viewTables')} onClick={() => onViewTables(s)}>
-                        <TableOutlined />
-                      </button>
-                      <button type="button" className="ds-act-btn" title={t('ds.edit')} onClick={() => onEdit(s)}>
-                        <EditOutlined />
-                      </button>
-                      <button
-                        type="button"
-                        className="ds-act-btn danger"
-                        disabled={busy === s.id}
-                        title={t('ds.delete')}
-                        onClick={() => onRemove(s)}
-                      >
-                        {busy === s.id ? <LoadingOutlined spin /> : <DeleteOutlined />}
-                      </button>
-                    </span>
-                    <button type="button" className="ds-ask-btn" onClick={() => onAsk && onAsk(s.id)}>
-                      <MessageOutlined />
-                      <span>{t('ds.ask')}</span>
-                      <span className="ds-ask-arrow" aria-hidden="true">→</span>
-                    </button>
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
+// 数据源页编排器：视图路由（列表 / 新建向导 / 编辑 sheet / 查看表）+ 删除确认。
+// 各区块实现见 components/datasource/ 下的组件文件（各自携带样式）。
 export default function DataSources({ onBackToChat, onAsk }) {
   const { t } = useI18n()
   const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(false)
-  const [view, setView] = useState('list') // 'list' | 'new' | 'edit'
-  const [newStep, setNewStep] = useState('type') // 'type' | 'form' | 'tables'
+  const [view, setView] = useState('list') // 'list' | 'new' | 'edit' | 'tables'
+  const [newStep, setNewStep] = useState('form') // 'form' | 'tables'（类型选择已并入表单首组）
+  const [confirmDel, setConfirmDel] = useState(null) // 待删除确认的数据源
   const [editing, setEditing] = useState(null)
   const [currentId, setCurrentId] = useState(null) // 当前向导流程中的数据源 id
   const [freshCreated, setFreshCreated] = useState(false) // 「下一步」刚建、还没保存表的源（取消时删）
@@ -968,7 +58,7 @@ export default function DataSources({ onBackToChat, onAsk }) {
   const goToList = ({ keep = false } = {}) => {
     if (freshCreated && !keep && currentId) deleteDataSource(currentId).catch(() => {})
     setView('list')
-    setNewStep('type')
+    setNewStep('form')
     setEditing(null)
     setCurrentId(null)
     setFreshCreated(false)
@@ -976,27 +66,26 @@ export default function DataSources({ onBackToChat, onAsk }) {
   }
 
   const goBack = () => {
+    // 删除确认打开时：ESC 先关对话框，不能顺手退出页面
+    if (confirmDel) return setConfirmDel(null)
     if (view === 'list') return onBackToChat?.()
-    if (view === 'edit') {
-      if (newStep === 'form') return goToList()
-      if (newStep === 'tables') return setNewStep('form')
-      return
-    }
-    // view === 'new'
-    if (newStep === 'type') return goToList()
-    if (newStep === 'form') return setNewStep('type')
+    // 「查看表」页只有一级：ESC/返回直接回列表（keep：无悬空源可删）
+    if (view === 'tables') return goToList({ keep: true })
     if (newStep === 'tables') return setNewStep('form')
+    return goToList()
   }
 
   const title =
-    view === 'edit' ? t('ds.edit') : view === 'new' ? t('ds.new') : t('ds.title')
+    view === 'edit' ? t('ds.edit') : view === 'new' ? t('ds.new')
+      : view === 'tables' ? (editing?.name || t('ds.chooseTables'))
+      : t('ds.title')
 
   const openNew = () => {
     setEditing(null)
     setCurrentId(null)
     setFreshCreated(false)
     setTestMsg('')
-    setNewStep('type')
+    setNewStep('form')
     setView('new')
   }
   const openEdit = (s) => {
@@ -1008,13 +97,14 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setView('edit')
   }
   // 卡片「查看表」：直接进入选表/管理步
+  // 用独立 view='tables' 而非 'edit'：'edit' 会同时弹出编辑表单 sheet，盖住表管理页
   const openTables = (s) => {
     setEditing(s)
     setCurrentId(s.id)
     setFreshCreated(false)
     setTestMsg('')
     setNewStep('tables')
-    setView('edit')
+    setView('tables')
   }
 
   // 表单「下一步」成功（已测试连通 + 已创建/更新源）→ 进入选表步
@@ -1024,6 +114,9 @@ export default function DataSources({ onBackToChat, onAsk }) {
     setFreshCreated(!!created)
     setNewStep('tables')
   }
+
+  // 编辑 sheet「保存」成功（已测试连通 + 已更新）→ 关闭 sheet 回列表
+  const handleSheetSaved = () => goToList({ keep: true })
 
   // 选表步「保存」成功 → 回列表（保留源）；首个源自动设为使用中
   const handleTablesSaved = () => {
@@ -1035,8 +128,11 @@ export default function DataSources({ onBackToChat, onAsk }) {
   // 选表步「取消」→ 回列表（删除未保存的悬空源）
   const handleTablesCancel = () => goToList()
 
-  const remove = (s) => {
-    if (!window.confirm(t('ds.confirmDelete', { name: s.name }))) return
+  const remove = (s) => setConfirmDel(s)
+  const confirmRemove = () => {
+    const s = confirmDel
+    setConfirmDel(null)
+    if (!s) return
     setBusy(s.id)
     deleteDataSource(s.id)
       .then(() => load())
@@ -1052,27 +148,30 @@ export default function DataSources({ onBackToChat, onAsk }) {
       .finally(() => setBusy(''))
   }
 
-  const backToLabel =
-    (view === 'new' && newStep === 'type') || (view === 'edit' && newStep === 'form')
-      ? t('ds.backTo')
-      : t('ds.prev')
+  // 面包屑「数据源」段点击：直接回列表（查看表页无悬空源，keep；向导内取消会删未保存源）
+  const onCrumbHome = () => (view === 'tables' ? goToList({ keep: true }) : goToList())
 
   return (
-    <div className="dsrc-page">
-      <header className="dsrc-topbar">
-        {/* 列表视图不显示返回按钮（返回对话走侧边栏「返回对话」）；向导步保留，用于页内返回 */}
-        {view !== 'list' && (
-          <button type="button" className="dsrc-back" onClick={goBack}>
-            ← {backToLabel}
-          </button>
-        )}
-        <span className="dsrc-topbar-title">{title}</span>
-        <span className="dsrc-topbar-badge">
-          <DbTypeIcon type="postgresql" size={16} /> PostgreSQL
-        </span>
-      </header>
+    <div className={`dsrc-page${view === 'edit' || confirmDel ? ' modal-open' : ''}`}>
+      {/* 顶栏仅向导视图（面包屑导航 + 类型徽标）；列表视图为无顶栏的页头单行（参考布局） */}
+      {view !== 'list' && (
+        <header className="dsrc-topbar">
+          <nav className="dsrc-crumbs" aria-label="面包屑">
+            <button type="button" className="dsrc-crumb-link" onClick={onCrumbHome}>
+              {t('ds.title')}
+            </button>
+            <span className="dsrc-crumb-sep" aria-hidden="true">
+              &gt;
+            </span>
+            <span className="dsrc-crumb-cur">{title}</span>
+          </nav>
+          <span className="dsrc-topbar-badge">
+            <DbTypeIcon type="postgresql" size={16} /> PostgreSQL
+          </span>
+        </header>
+      )}
 
-      <div className="dsrc-container">
+      <div className={`dsrc-container${view === 'tables' ? ' is-tables' : ''}`}>
         {testMsg && <div className="ds-bannertest">{testMsg}</div>}
 
         {view === 'list' && (
@@ -1090,16 +189,13 @@ export default function DataSources({ onBackToChat, onAsk }) {
           />
         )}
 
-        {view === 'new' && newStep === 'type' && <TypeSelectStep onPick={() => setNewStep('form')} />}
-
-        {/* 表单 & 选表：进入流程后保持挂载、仅隐藏切换，回退再前进不丢已填内容 */}
-        {(view === 'new' || view === 'edit') && (
+        {/* 新建表单：保持挂载、仅隐藏切换，回退再前进不丢已填内容 */}
+        {view === 'new' && (
           <div style={{ display: newStep === 'form' ? 'block' : 'none' }}>
             <DataSourceForm
-              editing={view === 'edit' ? editing : null}
-              existingId={view === 'new' ? currentId : null}
+              existingId={currentId}
               onNext={handleFormNext}
-              onPrev={() => setNewStep('type')}
+              onPrev={goToList}
               onError={(m) => {
                 if (!m) return
                 setTestMsg(m)
@@ -1109,19 +205,82 @@ export default function DataSources({ onBackToChat, onAsk }) {
           </div>
         )}
 
-        {(view === 'new' || view === 'edit') && currentId && (
-          <div style={{ display: newStep === 'tables' ? 'block' : 'none' }}>
+        {/* 编辑：底部弹出的可编辑页（iOS bottom sheet），保存/取消/遮罩点击/ESC 均回列表 */}
+        {view === 'edit' && editing && (
+          <div className="ds-sheet-overlay" onClick={() => goToList()}>
+            <div
+              className="ds-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${t('ds.edit')} · ${editing.name}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="ds-sheet-grab" aria-hidden="true" />
+              <div className="ds-sheet-head">
+                <h3 className="ds-sheet-title">
+                  {t('ds.edit')} · {editing.name}
+                </h3>
+                <button type="button" className="ds-sheet-close" onClick={() => goToList()} aria-label={t('ds.cancel')}>
+                  <X />
+                </button>
+              </div>
+              <div className="ds-sheet-body">
+                <DataSourceForm
+                  editing={editing}
+                  existingId={editing.id}
+                  onNext={handleSheetSaved}
+                  onError={(m) => {
+                    if (!m) return
+                    setTestMsg(m)
+                    setTimeout(() => setTestMsg(''), 4000)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(view === 'new' || view === 'edit' || view === 'tables') && currentId && (
+          <div
+            style={{ display: newStep === 'tables' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}
+          >
             <TableSelectStep
               sourceId={currentId}
               onSaved={handleTablesSaved}
               onCancel={handleTablesCancel}
-              onPrev={() => setNewStep('form')}
+              // 「查看表」页只有一级：返回 = 回列表；向导内：返回 = 上一步（连接表单）
+              onPrev={view === 'tables' ? () => goToList({ keep: true }) : () => setNewStep('form')}
+              backLabel={view === 'tables' ? t('ds.backTo') : undefined}
               onError={(m) => {
                 if (!m) return
                 setTestMsg(m)
                 setTimeout(() => setTestMsg(''), 4000)
               }}
             />
+          </div>
+        )}
+
+        {/* 删除确认：iOS 系统对话框（取代 window.confirm） */}
+        {confirmDel && (
+          <div className="ds-dialog-overlay" onClick={() => setConfirmDel(null)}>
+            <div
+              className="ds-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-label={t('ds.confirmDelete', { name: confirmDel.name })}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4>{confirmDel.name}</h4>
+              <p>{t('ds.confirmDelete', { name: confirmDel.name })}</p>
+              <div className="ds-dialog-actions">
+                <button type="button" onClick={() => setConfirmDel(null)}>
+                  {t('ds.cancel')}
+                </button>
+                <button type="button" className="danger" onClick={confirmRemove}>
+                  {t('ds.delete')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

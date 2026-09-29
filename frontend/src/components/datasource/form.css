@@ -1,0 +1,369 @@
+/* 配置连接表单：类型选择 / 字段 / 连接串预览 / 高级选项 / 测试结果 / 操作行 —— 随 DataSourceForm.jsx 引入 */
+
+/* ---------- 类型选择（步骤/表单内复用） ---------- */
+.dsrc-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.dsrc-type {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-lg);
+  background: var(--dd-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s var(--dd-ease), background 0.2s var(--dd-ease), box-shadow 0.2s var(--dd-ease);
+}
+.dsrc-type:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.dsrc-type:not(:disabled):hover {
+  border-color: var(--dd-line-strong);
+  box-shadow: var(--dd-shadow-1);
+}
+.dsrc-type.selected {
+  border-color: var(--dd-accent);
+  background: var(--dd-tint-active);
+  box-shadow: 0 0 0 3px var(--dd-ring);
+}
+.dsrc-type-glyph {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #eef2fb;
+}
+.dsrc-type-glyph.soon {
+  background: #f1f3f6;
+  filter: grayscale(1);
+}
+.dsrc-type-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dsrc-type-name {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--dd-text-1);
+}
+.dsrc-type-desc {
+  font-size: 12px;
+  color: var(--dd-text-3);
+}
+.dsrc-type-status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #248a3d;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dsrc-type-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dsrc-type-status.soon {
+  background: #f1f3f6;
+  color: var(--dd-text-3);
+}
+.dsrc-type-check {
+  flex: none;
+  color: var(--dd-accent);
+  font-size: 15px;
+}
+
+/* 表单内紧凑变体（并入连接表单后，类型选择成为表单第一组） */
+.dsrc-types.compact {
+  gap: 10px;
+}
+.dsrc-types.compact .dsrc-type {
+  padding: 12px;
+  gap: 10px;
+}
+.dsrc-types.compact .dsrc-type-glyph {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+.dsrc-types.compact .dsrc-type-name {
+  font-size: 13.5px;
+}
+.dsrc-types.compact .dsrc-type-desc {
+  display: none;
+}
+.dsrc-types.compact .dsrc-type-status {
+  font-size: 10.5px;
+  padding: 2px 8px;
+}
+
+/* ---------- 表单字段 ---------- */
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.ds-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dd-text-2);
+}
+.ds-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  color: var(--dd-text-1);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s var(--dd-ease), box-shadow 0.15s var(--dd-ease);
+}
+.ds-input::placeholder {
+  color: var(--dd-text-3);
+}
+.ds-input:hover {
+  border-color: var(--dd-line-strong);
+}
+.ds-input:focus {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-ring);
+}
+.ds-input:focus-visible {
+  outline: none;
+}
+.ds-input-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.ds-input-area {
+  height: auto;
+  min-height: 52px;
+  padding: 9px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ds-input-sm {
+  height: 32px;
+  font-size: 13px;
+  padding: 0 10px;
+  border-radius: var(--dd-r-sm);
+}
+.ds-hint {
+  font-size: 11.5px;
+  color: var(--dd-text-3);
+}
+.ds-row2 {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 12px;
+}
+.ds-field-grow {
+  min-width: 0;
+}
+
+.ds-pwd-wrap {
+  position: relative;
+}
+.ds-pwd-wrap .ds-input {
+  padding-right: 42px;
+}
+.ds-pwd-toggle {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--dd-r-sm);
+  background: transparent;
+  color: var(--dd-text-3);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.ds-pwd-toggle:hover {
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-1);
+}
+
+.ds-schema-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ds-schema-row .ds-input {
+  flex: 1;
+  min-width: 0;
+}
+.ds-schema-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ds-schema-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-canvas);
+  color: var(--dd-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color 0.13s var(--dd-ease), background 0.13s var(--dd-ease), color 0.13s var(--dd-ease);
+}
+.ds-schema-chip:hover {
+  border-color: var(--dd-accent);
+  background: var(--dd-tint-active);
+}
+.ds-schema-chip.on {
+  background: var(--dd-accent);
+  border-color: var(--dd-accent);
+  color: #fff;
+}
+
+/* ---------- 连接串预览：中性深灰代码块（Apple 代码块语言，非品牌色块，去掉蓝光投影） ---------- */
+.ds-conn {
+  border-radius: var(--dd-r-lg);
+  background: var(--dd-text-1);
+  padding: 13px 16px 15px;
+  box-shadow: 0 2px 10px rgba(29, 29, 31, 0.10);
+}
+.ds-conn-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #8e8e93;
+  margin-bottom: 8px;
+}
+.ds-conn-code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #f5f5f7;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.ds-conn-code-inline {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--dd-text-1);
+  word-break: break-all;
+}
+
+/* ---------- 高级选项 ---------- */
+.ds-adv {
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-lg);
+  overflow: hidden;
+}
+.ds-adv-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--dd-text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s var(--dd-ease);
+}
+.ds-adv-toggle:hover {
+  color: var(--dd-text-1);
+}
+/* 折叠指示：chevron 旋转（替代旧 ▸/▾ 文本字） */
+.ds-adv-caret {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--dd-text-3);
+  transition: transform 0.18s var(--dd-ease);
+}
+.ds-adv-caret.open {
+  transform: rotate(180deg);
+}
+.ds-adv-body {
+  padding: 4px 16px 14px;
+  border-top: 1px solid var(--dd-line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ds-adv-ssl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--dd-text-2);
+  cursor: pointer;
+}
+.ds-adv-ssl input {
+  accent-color: var(--dd-accent);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* ---------- 测试结果 ---------- */
+.ds-test {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--dd-r-md);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.ds-test.ok {
+  background: rgba(52, 199, 89, 0.1);
+  color: #248a3d;
+}
+.ds-test.err {
+  background: rgba(255, 59, 95, 0.08);
+  color: #e02745;
+}
+
+/* ---------- 表单操作行：主按钮恒在右 ---------- */
+.ds-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+.ds-form-actions .ds-btn-primary {
+  margin-left: auto;
+}
+

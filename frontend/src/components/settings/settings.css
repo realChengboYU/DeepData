@@ -1,0 +1,334 @@
+/* 设置弹窗：模型配置（列表/编辑器/测试）+ 语言选择 —— 随 SettingsModal.jsx 引入 */
+
+/* 弹层入场动画（模型选择下拉 / 设置弹窗内复用） */
+@keyframes settings-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.settings-title {
+  padding: 4px 10px 8px;
+  font-size: 12px;
+  font-weight: 650;
+  color: #94a3b8;
+  text-align: left;
+}
+.lang-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1e3a8a;
+  text-align: left;
+  white-space: nowrap;
+}
+.lang-opt:hover {
+  background: var(--dd-tint-hover);
+}
+.lang-opt.active {
+  background: var(--dd-tint-active);
+  color: var(--dd-accent);
+}
+.lang-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--dd-accent);
+}
+.lang-opt.active .lang-flag {
+  background: var(--dd-accent-deep);
+}
+.lang-label {
+  flex: 1;
+}
+.lang-check {
+  font-size: 13px;
+  color: #2563eb;
+}
+
+/* ===== 设置弹窗（对话模型配置 + 语言） ===== */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 9vh 20px 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(3px);
+  animation: settings-fade 0.16s ease;
+}
+@keyframes settings-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.settings-panel {
+  width: 100%;
+  max-width: 880px;
+  /* 固定尺寸：切换「模型配置 / 语言」或列表 / 编辑视图时面板不伸缩，内容区内部滚动 */
+  height: min(760px, 86vh);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--dd-surface);
+  border-radius: var(--dd-r-xl);
+  box-shadow: var(--dd-shadow-3);
+  animation: settings-rise 0.3s var(--dd-ease-pop);
+}
+@keyframes settings-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--dd-line);
+}
+.settings-head .settings-title {
+  padding: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--dd-text-1);
+}
+.settings-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  /* 圆形关闭钮（macOS 窗口按钮语言） */
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dd-text-3);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.settings-close:hover { background: var(--dd-tint-hover); color: var(--dd-text-1); }
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+/* 左侧导航：选择「模型配置 / 语言」 */
+.settings-nav {
+  flex: 0 0 188px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 10px 16px;
+  border-right: 1px solid var(--dd-line);
+  background: var(--dd-canvas);
+  /* 材质顶部内高光，与导航栏同一语言 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--dd-r-md);
+  background: transparent;
+  color: var(--dd-text-2);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.settings-nav-item:hover { background: var(--dd-tint-hover); color: var(--dd-text-1); }
+/* 激活项：白色表面胶囊 + accent（与导航栏激活态同一语言） */
+.settings-nav-item.active { background: var(--dd-surface); color: var(--dd-accent); font-weight: 600; box-shadow: var(--dd-shadow-1); }
+.settings-nav-icon { width: 14px; height: 14px; }
+/* 右侧内容区：随左侧选择切换 */
+.settings-pane {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  overflow-y: auto;
+}
+.settings-section { display: flex; flex-direction: column; gap: 16px; }
+.settings-section-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--dd-text-1); }
+.settings-section-sub { margin: -6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--dd-text-3); }
+.settings-field { display: flex; flex-direction: column; gap: 7px; }
+.settings-field-label { font-size: 13px; font-weight: 550; color: var(--dd-text-2); }
+.settings-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  font-size: 14px;
+  color: var(--dd-text-1);
+  background: var(--dd-surface);
+  transition: border-color 0.15s var(--dd-ease), box-shadow 0.15s var(--dd-ease), background 0.15s var(--dd-ease);
+}
+.settings-input::placeholder { color: var(--dd-text-3); }
+.settings-input:hover { border-color: var(--dd-line-strong); }
+.settings-input:focus { outline: none; border-color: var(--dd-accent); box-shadow: 0 0 0 3px var(--dd-ring); background: #fff; }
+.settings-input.mono {
+  font-family: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+.settings-test-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 15px;
+  border: none;
+  border-radius: var(--dd-r-md);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease), border-color 0.15s var(--dd-ease);
+}
+.settings-btn:disabled { opacity: 0.6; cursor: default; }
+.settings-btn.ghost { border: 1px solid var(--dd-line); background: var(--dd-surface); color: var(--dd-text-2); }
+.settings-btn.ghost:hover:not(:disabled) { background: var(--dd-tint-hover); color: var(--dd-text-1); }
+.settings-btn.primary { background: var(--dd-accent); color: #fff; }
+.settings-btn.primary:hover:not(:disabled) { background: var(--dd-accent-deep); }
+.settings-test-result { font-size: 12.5px; line-height: 1.4; }
+/* 语义色与数据源状态徽标同源 */
+.settings-test-result.ok { color: #248a3d; }
+.settings-test-result.err { color: #d70015; }
+.settings-lang { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.settings-lang .lang-opt { border: 1px solid var(--dd-line); background: var(--dd-surface); padding: 9px 12px; border-radius: var(--dd-r-md); }
+.settings-lang .lang-opt:hover { background: var(--dd-tint-hover); }
+.settings-lang .lang-opt.active { border-color: var(--dd-accent); background: var(--dd-tint-active); color: var(--dd-accent); }
+
+/* ===== 模型配置：卡片列表（状态点 + 编辑/删除/设默认） ===== */
+.models-empty {
+  padding: 26px 18px;
+  border: 1px dashed var(--dd-line-strong);
+  border-radius: 12px;
+  background: var(--dd-canvas);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.models-empty-title { font-size: 14px; font-weight: 600; color: var(--dd-text-1); }
+.models-empty-sub { font-size: 12.5px; color: var(--dd-text-3); }
+/* 模型列表：Apple 分组列表（单一容器 + 发丝线分隔，行内无边框无阴影） */
+.models-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-surface);
+  box-shadow: var(--dd-shadow-1);
+  overflow: hidden;
+}
+.model-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--dd-surface);
+  transition: background 0.15s var(--dd-ease);
+}
+.model-card + .model-card { border-top: 1px solid var(--dd-line); }
+.model-card:hover { background: var(--dd-tint-hover); }
+.model-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.model-card-name { display: flex; align-items: center; gap: 8px; }
+.model-card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--dd-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 状态点：真实语义（API Key 是否配置），iOS 语义色 */
+.model-dot { width: 7px; height: 7px; border-radius: 50%; background: #34c759; flex: none; }
+.model-dot.off { background: #ff453a; }
+.model-badge {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+  background: var(--dd-tint-active);
+  color: var(--dd-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.model-card-sub {
+  font-size: 12px;
+  color: var(--dd-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
+}
+.model-card-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+/* 行内操作：无边框安静文本钮（分组列表里边框会抢结构） */
+.model-btn {
+  height: 28px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dd-text-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.model-btn:hover { background: var(--dd-tint-hover); color: var(--dd-text-1); }
+.model-btn.danger { color: #d70015; }
+.model-btn.danger:hover { background: rgba(255, 59, 95, 0.08); color: #d70015; }
+.models-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  border: 1px dashed var(--dd-line-strong);
+  /* 与分组列表容器同圆角 */
+  border-radius: 12px;
+  background: transparent;
+  color: var(--dd-text-3);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease), border-color 0.15s var(--dd-ease);
+}
+.models-add:hover { border-color: var(--dd-accent); color: var(--dd-accent); background: var(--dd-tint-active); }
+
+/* 模型编辑器（新建 / 编辑，列表视图内切换，面板尺寸不变） */
+.model-editor { display: flex; flex-direction: column; gap: 14px; }
+.model-editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 560px) {
+  .settings-body { flex-direction: column; }
+  .settings-nav {
+    flex: none;
+    flex-direction: row;
+    padding: 10px 10px 12px;
+    border-right: none;
+    border-bottom: 1px solid #eef2f8;
+  }
+  .settings-nav-item { flex: 1; justify-content: center; height: 34px; }
+}

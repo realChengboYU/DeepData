@@ -26,17 +26,20 @@
   z-index: 2;
   padding: 4px;
   border-radius: 12px;
-  background: var(--pb-menu);
-  box-shadow:
-    0 10px 30px -10px rgba(0, 0, 0, 0.35),
-    0 1px 2px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--dd-line);
+  background: color-mix(in srgb, var(--pb-menu) 0.88, transparent);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: var(--dd-shadow-2);
   transform-origin: bottom center;
   animation: prompt-bar-pop 180ms var(--pb-ease-out) both;
 }
 
 .prompt-bar__menu[data-kind='model'] {
   right: auto;
-  width: 200px;
+  /* 锚在「+」按钮之后，与模型触发钮左缘对齐 */
+  left: 52px;
+  width: 240px;
   transform-origin: bottom left;
 }
 
@@ -122,6 +125,16 @@
 
 .prompt-bar__row-check[data-on] {
   opacity: 1;
+  color: var(--dd-accent);
+}
+
+/* 当前选中的模型：蓝色文本 + 加粗（Apple 菜单选中语言） */
+.prompt-bar__row:has(.prompt-bar__row-check[data-on]) {
+  color: var(--dd-accent);
+}
+
+.prompt-bar__row:has(.prompt-bar__row-check[data-on]) .prompt-bar__row-name {
+  font-weight: 600;
 }
 
 .prompt-bar__empty {
@@ -138,12 +151,17 @@
   isolation: isolate;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--dd-line);
   border-radius: var(--pb-radius);
   background: var(--pb-bg);
+  box-shadow: var(--dd-shadow-1);
   cursor: text;
+  transition: border-color 0.2s var(--dd-ease), box-shadow 0.2s var(--dd-ease);
 }
+
+/* 聚焦不加高亮：保持默认发丝线 + 轻影（用户要求取消蓝框光环） */
 
 .prompt-bar__field::before {
   content: '';
@@ -231,8 +249,8 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 15px;
+  line-height: 24px;
   resize: none;
   outline: none;
   overflow-wrap: anywhere;
@@ -240,6 +258,12 @@
 
 .prompt-bar__input::placeholder {
   color: color-mix(in srgb, var(--pb-ink) 45%, transparent);
+}
+
+/* 覆盖 index.css 全局 :focus-visible 焦点环（同特异性下靠后未生效，这里提级显式取消）：
+   聊天输入框聚焦时不出现蓝色描边，光标即焦点反馈 */
+.prompt-bar__input:focus-visible {
+  outline: none;
 }
 
 @media (pointer: coarse) {
@@ -251,7 +275,7 @@
 .prompt-bar__bar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .prompt-bar__spacer {
@@ -275,8 +299,8 @@
 .prompt-bar__tool {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border-radius: 8px;
   background: transparent;
@@ -294,13 +318,13 @@
 .prompt-bar__pick {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 8px;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
   border-radius: 8px;
   background: transparent;
-  color: color-mix(in srgb, var(--pb-ink) 70%, transparent);
-  font-size: 12px;
+  color: color-mix(in srgb, var(--pb-ink) 72%, transparent);
+  font-size: 12.5px;
   font-weight: 500;
   transition:
     background-color 150ms ease,
@@ -406,9 +430,10 @@
   width: 14px;
   height: 28px;
   margin-left: -7px;
+  border: 1px solid var(--dd-line-strong);
   border-radius: 7px;
-  background: var(--pb-ink);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(29, 29, 31, 0.22);
   transition:
     left 220ms var(--pb-ease-out),
     background-color 300ms ease;
@@ -462,10 +487,11 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border-radius: 8px;
+  /* 圆形发送钮（iMessage 语言）：就绪时亮蓝圆，未就绪时灰调圆 */
+  border-radius: 50%;
   background: color-mix(in srgb, var(--pb-ink) 12%, var(--pb-bg));
   color: color-mix(in srgb, var(--pb-ink) 55%, var(--pb-bg));
   transition:
@@ -479,8 +505,14 @@
 }
 
 .prompt-bar__send[data-armed] {
-  background: var(--pb-ink);
-  color: var(--pb-bg);
+  background: var(--dd-accent);
+  color: #ffffff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .prompt-bar__send[data-armed]:hover {
+    background: var(--dd-accent-deep);
+  }
 }
 
 .prompt-bar__send[data-pressed] {

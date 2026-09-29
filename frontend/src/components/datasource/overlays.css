@@ -1,0 +1,190 @@
+/* 编辑底部弹出页 + 删除确认对话框（含 ds-fade/ds-pop/ds-sheet-up 动画）—— 随 DataSources 页引入 */
+
+/* ---------- 编辑底部弹出页（iOS bottom sheet 语言） ---------- */
+.ds-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ds-fade 0.2s var(--dd-ease);
+}
+.ds-sheet {
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--dd-canvas);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 48px rgba(29, 29, 31, 0.22);
+  padding-bottom: 32px;
+  animation: ds-sheet-up 0.35s var(--dd-ease-out);
+}
+.ds-sheet-grab {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dd-line-strong);
+  margin: 10px auto 0;
+}
+.ds-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 28px 0;
+}
+.ds-sheet-title {
+  margin: 0;
+  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--dd-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-sheet-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dd-text-3);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
+}
+.ds-sheet-close:hover {
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-1);
+}
+.ds-sheet-close:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+.ds-sheet-body {
+  padding-top: 8px;
+}
+/* sheet 内表单：去掉与 sheet 标题重复的流程头 */
+.ds-sheet .dsrc-flow {
+  margin: 0 auto;
+  padding: 0 28px;
+  max-width: 760px;
+}
+.ds-sheet .dsrc-flow-head {
+  display: none;
+}
+.ds-sheet .ds-form-actions {
+  padding-bottom: 8px;
+}
+@keyframes ds-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-sheet-overlay,
+  .ds-sheet {
+    animation: none;
+  }
+  .ds-adv-caret {
+    transition: none;
+  }
+  .ds-card-actions {
+    transition: none;
+  }
+}
+
+/* ---------- 删除确认（iOS 系统对话框语言） ---------- */
+.ds-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ds-fade 0.18s var(--dd-ease);
+}
+.ds-dialog {
+  width: 300px;
+  padding: 20px 16px 0;
+  background: var(--dd-surface);
+  border-radius: 16px;
+  box-shadow: var(--dd-shadow-3);
+  text-align: center;
+  animation: ds-pop 0.22s var(--dd-ease-pop);
+}
+.ds-dialog h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--dd-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-dialog p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dd-text-3);
+}
+.ds-dialog-actions {
+  display: flex;
+  margin: 18px -16px 0;
+}
+.ds-dialog-actions button {
+  flex: 1;
+  padding: 11px 0;
+  border: none;
+  background: transparent;
+  color: var(--dd-accent);
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background 0.12s var(--dd-ease);
+}
+.ds-dialog-actions button + button {
+  border-left: 1px solid var(--dd-line);
+}
+.ds-dialog-actions button:hover {
+  background: var(--dd-tint-hover);
+}
+.ds-dialog-actions .danger {
+  color: #e02745;
+  font-weight: 600;
+}
+.ds-dialog-actions .danger:hover {
+  background: rgba(255, 59, 95, 0.06);
+}
+.ds-dialog-actions button:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+@keyframes ds-fade {
+  from { opacity: 0; }
+}
+@keyframes ds-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-dialog-overlay,
+  .ds-dialog {
+    animation: none;
+  }
+}

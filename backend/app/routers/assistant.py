@@ -33,6 +33,7 @@ class AssistantRequest(BaseModel):
     tools: dict | None = None
     threadId: str | None = None
     dataSourceId: str | None = None
+    modelId: str | None = None
     parentId: str | None = None
     callSettings: dict | None = None
     config: dict | None = None
@@ -126,9 +127,9 @@ async def assistant(
         # 若该线程有待澄清状态，则本次 add-message 视为用户选择 -> 流式恢复
         pending = get_pending(thread_id)
         if pending and pending.get("question"):
-            event_iter = resume_clarify_stream(thread_id, question, user_key, payload.dataSourceId)
+            event_iter = resume_clarify_stream(thread_id, question, user_key, payload.dataSourceId, payload.modelId)
         else:
-            event_iter = run_agent_stream(question, thread_id, user_key, payload.dataSourceId)
+            event_iter = run_agent_stream(question, thread_id, user_key, payload.dataSourceId, payload.modelId)
 
         # 用 checkpointer 历史 + 新消息初始化 state.messages，供前端 1:1 恢复
         history = get_history(thread_id).get("messages") or []

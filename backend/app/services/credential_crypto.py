@@ -1,5 +1,4 @@
 """数据源凭据加密：密码用服务端密钥 AES-GCM 加密后落库，避免明文进库。
-
 - 密钥从环境变量 ``DS_CREDENTIAL_KEY`` 读取（32 字节的 base64 或 64 位 hex）。
 - 未配置 / 格式不符时回退到「开发默认密钥」并告警（生产务必配置 DS_CREDENTIAL_KEY）。
 - 落库格式：``enc1:<urlsafe-base64(nonce‖ciphertext)>``。

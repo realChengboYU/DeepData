@@ -1,14 +1,3 @@
-"""PostgreSQL 数据源：从环境变量构建 PG 连接串并暴露 SQLDatabase 工具所需连接。
-
-连接串只通过环境变量 `PG_CONNECTION_STRING` 提供（切勿写死到代码 / 提交进仓库）：
-    postgresql+psycopg://USER:PASSWORD@HOST:PORT/DB
-
-使用 SQLAlchemy 的 psycopg(v3) 驱动（`postgresql+psycopg://`），无需额外安装 psycopg2。
-
-未配置 `PG_CONNECTION_STRING` 时本模块不抛错：连接串为空 → `get_pg_database` 返回
-None → `get_sql_tools` 返回空列表，智能体退化为纯对话（SQL 工具不绑定）。
-"""
-
 import os
 from typing import Optional
 

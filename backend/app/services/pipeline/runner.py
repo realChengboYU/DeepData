@@ -229,6 +229,7 @@ async def run_agent_stream(
     session_id: Optional[str] = None,
     user_key: Optional[str] = None,
     data_source_id: Optional[str] = None,
+    model_id: Optional[str] = None,
 ) -> AsyncIterator[dict]:
     """流式多轮对话：逐块返回模型 thinking / answer 增量（SSE 事件），并在结束时持久化会话。
 
@@ -265,7 +266,8 @@ async def run_agent_stream(
     try:
         from langchain_deepseek import ChatDeepSeek
 
-        api_key, base_url, model = llm_store.resolve_llm_config(user_key or "anonymous")
+        # 模型解析：聊天框显式选择的 model_id > 用户默认模型 > 旧单配置 > backend/.env
+        api_key, base_url, model = llm_store.resolve_llm_config(user_key or "anonymous", model_id)
         if not api_key:
             raise RuntimeError("未配置对话模型：请在「设置」里配置模型（URL/名称/Key），或在 backend/.env 设置 LLM_API_KEY")
         llm = ChatDeepSeek(model=model, api_key=api_key, base_url=base_url, temperature=0.7, timeout=LLM_TIMEOUT)
@@ -430,6 +432,7 @@ async def resume_clarify_stream(
     option_label: str,
     user_key: Optional[str] = None,
     data_source_id: Optional[str] = None,
+    model_id: Optional[str] = None,
 ) -> AsyncIterator[dict]:
     """用户对澄清选择后的流式恢复：把选择写入历史并继续生成。
 
@@ -455,7 +458,7 @@ async def resume_clarify_stream(
         _GRAPH.update_state(config, {"messages": full})
     except Exception:
         pass
-    async for ev in run_agent_stream(f"基于我选择「{label}」，请继续。", session_id, user_key, data_source_id):
+    async for ev in run_agent_stream(f"基于我选择「{label}」，请继续。", session_id, user_key, data_source_id, model_id):
         yield ev
 
 

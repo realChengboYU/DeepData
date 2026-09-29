@@ -1,0 +1,113 @@
+/* 对话顶部数据源切换器 —— 随 DsSwitcher.jsx 引入 */
+
+/* 数据源切换器：每个会话窗口只针对一个库对话，可在此切换 */
+.ds-switcher {
+  position: relative;
+}
+.ds-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 11px;
+  border: 1px solid var(--dd-line-strong);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  color: var(--dd-text-1);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 0.2s var(--dd-ease), background 0.2s var(--dd-ease);
+}
+.ds-switcher-btn:hover {
+  background: var(--dd-tint-hover);
+}
+.ds-switcher-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.ds-switcher-ic {
+  display: block;
+  flex: none;
+}
+.ds-switcher-label {
+  max-width: 220px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ds-switcher-caret {
+  width: 10px;
+  height: 10px;
+  color: #64748b;
+  transition: transform 0.15s ease;
+}
+.ds-switcher-caret.open {
+  transform: rotate(180deg);
+}
+.ds-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 6px;
+  background: color-mix(in srgb, #ffffff 0.9, transparent);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-lg);
+  box-shadow: var(--dd-shadow-2);
+}
+.ds-switcher-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+.ds-switcher-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.13s ease;
+}
+.ds-switcher-opt:hover {
+  background: var(--dd-tint-hover);
+}
+.ds-switcher-opt.active {
+  background: var(--dd-tint-active);
+  color: var(--dd-accent);
+}
+.ds-switcher-opt-main {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: #1e3a8a;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ds-switcher-opt-sub {
+  flex: none;
+  max-width: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #94a3b8;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ds-switcher-opt-check {
+  flex: none;
+  color: #2563eb;
+  font-size: 13px;
+}

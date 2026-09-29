@@ -6,6 +6,7 @@ import {
 import { Thread } from '@/components/thread.aui'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ComposerControlsContext } from '@/components/promptbar/controls'
+import { useModelsStore } from '@/store/models'
 
 // 生成消息 / part id（无 crypto 时退化）
 function makeId() {
@@ -161,6 +162,8 @@ export default function AssistantChat({
       ...body,
       threadId,
       dataSourceId: dsRef.current || null,
+      // 聊天输入框当前选中的模型（设置里配置的多个模型之一；未配置/未选择为 null）
+      modelId: useModelsStore.getState().selectedId || null,
     }),
     onFinish: () => onFinish?.(),
     onError: () => onFinish?.(),
