@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as echarts from "echarts";
 import ReactECharts from "echarts-for-react";
-import { westerosTheme } from "@/echarts/westeros";
+import { westerosLightTheme, westerosDarkTheme, westerosTokens } from "@/echarts/westeros";
+import { useThemeStore } from "@/store/theme";
 
-// 注册一次 westeros 主题（模块级，只跑一次；重复注册无害）
-echarts.registerTheme("westeros", westerosTheme);
+// 注册 westeros 亮/暗主题（模块级，只跑一次；重复注册无害）
+echarts.registerTheme("westerosLight", westerosLightTheme);
+echarts.registerTheme("westerosDark", westerosDarkTheme);
 
 /**
  * ChartSpec 结构（后端/模型产出）：
@@ -120,10 +122,12 @@ const ICONS = {
 
 // 让 westeros 主题负责样式（色板、坐标轴灰标签、扁平柱条、图例/标题颜色），
 // 这里只提供结构、布局数据与交互参数，不覆盖主题的颜色/边框。
-function buildOption(spec, type, { stacked = false, dual = false } = {}) {
+function buildOption(spec, type, { stacked = false, dual = false } = {}, mode = "light") {
   const categories = spec?.categories ?? [];
   const series = (spec?.series ?? []).filter((s) => s?.data?.length);
   const multiSeries = series.length > 1;
+  const theme = mode === "dark" ? westerosDarkTheme : westerosLightTheme;
+  const tok = westerosTokens(mode);
 
   const base = {
     title: spec?.title ? { text: spec.title, left: "center", top: 4 } : undefined,
@@ -136,7 +140,7 @@ function buildOption(spec, type, { stacked = false, dual = false } = {}) {
         ? { show: true, top: type === "pie" ? 6 : 24, left: "center" }
         : undefined,
     grid: { left: "10%", right: "10%", top: 70, bottom: "8%", containLabel: true },
-    color: westerosTheme.color,
+    color: theme.color,
   };
 
   if (type === "pie") {
@@ -152,7 +156,7 @@ function buildOption(spec, type, { stacked = false, dual = false } = {}) {
             right: 4,
             top: "middle",
             type: "scroll",
-            textStyle: { color: "#86868b" },
+            textStyle: { color: tok.text3 },
           }
         : undefined,
       tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
@@ -162,7 +166,7 @@ function buildOption(spec, type, { stacked = false, dual = false } = {}) {
           radius: showLegend ? ["40%", "60%"] : ["38%", "66%"],
           center: showLegend ? ["42%", "54%"] : ["50%", "56%"],
           data,
-          label: { formatter: "{b}\n{d}%", color: "#1d1d1f" },
+          label: { formatter: "{b}\n{d}%", color: tok.text },
         },
       ],
     };
@@ -218,6 +222,7 @@ export default function Chart({ spec }) {
   const [collapsed, setCollapsed] = useState(false);
   // 专注模式：把图单独弹到大弹窗里看
   const [focus, setFocus] = useState(false);
+  const themeMode = useThemeStore((s) => s.theme);
   const chartRef = useRef(null);
   const instanceRef = useRef(null);
   const focusInstanceRef = useRef(null);
@@ -226,6 +231,8 @@ export default function Chart({ spec }) {
   const multiSeries = series.length > 1;
   const canPie = !multiSeries;
   const chartHeight = 460;
+  const themeKey = themeMode === "dark" ? "westerosDark" : "westerosLight";
+  const exportBg = themeMode === "dark" ? "#16181d" : "#ffffff";
 
   // 外部 spec.chartType 变化（新图/新消息）时跟随模型建议的类型；用户手动切换后保留
   useEffect(() => {
@@ -237,8 +244,8 @@ export default function Chart({ spec }) {
   }, [spec?.chartType]);
 
   const option = useMemo(
-    () => buildOption(spec, type, { stacked, dual }),
-    [spec, type, stacked, dual]
+    () => buildOption(spec, type, { stacked, dual }, themeMode),
+    [spec, type, stacked, dual, themeMode]
   );
 
   // 专注弹窗：Esc 关闭 + 锁滚动
@@ -259,7 +266,7 @@ export default function Chart({ spec }) {
     // 专注模式下用弹窗里的大图例（更清晰），否则用主卡片图例
     const inst = focus ? focusInstanceRef.current : instanceRef.current;
     if (!inst) return;
-    const url = inst.getDataURL({ pixelRatio: 2, backgroundColor: "#ffffff" });
+    const url = inst.getDataURL({ pixelRatio: 2, backgroundColor: exportBg });
     const a = document.createElement("a");
     a.href = url;
     a.download = `${spec?.title || "chart"}.png`;
@@ -268,41 +275,41 @@ export default function Chart({ spec }) {
 
   const showXYToggles = type !== "pie" && type !== "scatter";
 
-  // macOS 分段控件：选中段 = 白底浮起；焦点环 = accent
+  // macOS 分段控件：选中段 = 表面浮起；焦点环 = accent
   const typeBtn = (active, disabled) =>
-    `inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
+    `inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--dd-accent)/40 ${
       active
-        ? "bg-white text-[#1d1d1f] shadow-sm"
-        : "text-[#86868b] hover:text-[#1d1d1f]"
+        ? "bg-(--dd-surface) text-(--dd-text-1) shadow-sm"
+        : "text-(--dd-text-3) hover:text-(--dd-text-1)"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   // 堆叠/双轴这类开关式小按钮（选中 = accent 蓝态）
   const toggleBtn = (active, disabled) =>
-    `inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
+    `inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--dd-accent)/40 ${
       active
-        ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
-        : "border-[#e8edf4] bg-white text-[#86868b] hover:border-[#d8e0ea] hover:text-[#48484a]"
+        ? "border-(--dd-accent) bg-(--dd-accent)/10 text-(--dd-accent)"
+        : "border-(--dd-line) bg-(--dd-surface) text-(--dd-text-3) hover:border-(--dd-line-strong) hover:text-(--dd-text-1)"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   // 右上角的纯图标操作按钮（导出 / 放大 / 收缩 / 关闭）
   const iconBtn = (active, disabled = false) =>
-    `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 ${
+    `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--dd-accent)/40 ${
       active
-        ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
-        : "border-transparent text-[#86868b] hover:bg-[#f4f7fb] hover:text-[#48484a]"
+        ? "border-(--dd-accent) bg-(--dd-accent)/10 text-(--dd-accent)"
+        : "border-transparent text-(--dd-text-3) hover:bg-(--dd-tint-hover) hover:text-(--dd-text-1)"
     } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`;
 
   return (
     <>
       <div
         data-slot="aui_chart"
-        className="my-2 overflow-hidden rounded-xl border border-[#e8edf4] bg-white"
+        className="my-2 overflow-hidden rounded-xl border border-(--dd-line) bg-(--dd-surface)"
       >
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#eef2f7] bg-[#fbfcfe] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-(--dd-line) bg-(--dd-canvas) px-3 py-2">
           {!collapsed && (
             <>
               {/* 图表类型分段控件 */}
-              <div className="inline-flex items-center rounded-lg bg-[#eceff4] p-0.5">
+              <div className="inline-flex items-center rounded-lg bg-(--dd-line) p-0.5">
                 {CHART_TYPES.map((t) => {
                   const disabled = t.key === "pie" && !canPie;
                   return (
@@ -344,12 +351,12 @@ export default function Chart({ spec }) {
                 </div>
               )}
 
-              <div className="mx-1 hidden h-4 w-px bg-[#e6ebf2] sm:block" />
+              <div className="mx-1 hidden h-4 w-px bg-(--dd-line) sm:block" />
             </>
           )}
 
           {collapsed && (
-            <span className="min-w-0 flex-1 truncate text-xs text-[#5b6b80]">
+            <span className="min-w-0 flex-1 truncate text-xs text-(--dd-text-2)">
               {spec?.title || "图表已收起"}
             </span>
           )}
@@ -388,8 +395,9 @@ export default function Chart({ spec }) {
           <div className="p-2">
             <ReactECharts
               ref={chartRef}
+              key={themeKey}
               option={option}
-              theme="westeros"
+              theme={themeKey}
               style={{ height: chartHeight, width: "100%" }}
               notMerge
               opts={{ renderer: "canvas" }}
@@ -409,11 +417,11 @@ export default function Chart({ spec }) {
             onClick={() => setFocus(false)}
           >
             <div
-              className="flex max-h-[95vh] w-[min(1500px,96vw)] flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_24px_64px_rgba(29,29,31,0.3)]"
+              className="flex max-h-[95vh] w-[min(1500px,96vw)] flex-col overflow-hidden rounded-(--dd-r-xl) bg-(--dd-surface) shadow-(--dd-shadow-3)"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex flex-wrap items-center gap-2 border-b border-[#eef2f7] bg-[#fbfcfe] px-3 py-2">
-              <span className="min-w-0 truncate text-sm font-medium text-[#1d1d1f]">
+            <div className="flex flex-wrap items-center gap-2 border-b border-(--dd-line) bg-(--dd-canvas) px-3 py-2">
+              <span className="min-w-0 truncate text-sm font-medium text-(--dd-text-1)">
                 {spec?.title || "图表"}
               </span>
               <div className="ml-auto flex items-center gap-1">
@@ -437,8 +445,9 @@ export default function Chart({ spec }) {
             </div>
             <div className="flex-1 p-2">
               <ReactECharts
+                key={themeKey}
                 option={option}
-                theme="westeros"
+                theme={themeKey}
                 style={{ height: "78vh", width: "100%" }}
                 notMerge
                 opts={{ renderer: "canvas" }}

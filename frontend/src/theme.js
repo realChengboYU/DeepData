@@ -1,9 +1,9 @@
-// Ant Design 全局主题：对齐 DeepData 蓝调色板
-export const antdTheme = {
+// Ant Design 全局主题：对齐 DeepData 中性框架默认（去蓝），随明暗自适应
+export const antdThemeFor = (dark) => ({
   token: {
-    colorPrimary: '#2563eb',
-    colorInfo: '#2563eb',
-    colorLink: '#2563eb',
+    colorPrimary: dark ? '#e6e8ec' : '#1d1d1f',
+    colorInfo: dark ? '#e6e8ec' : '#1d1d1f',
+    colorLink: dark ? '#e6e8ec' : '#1d1d1f',
     colorSuccess: '#16a34a',
     colorWarning: '#f59e0b',
     colorError: '#e11d48',
@@ -17,4 +17,4 @@ export const antdTheme = {
       primaryShadow: 'none',
     },
   },
-}
+})

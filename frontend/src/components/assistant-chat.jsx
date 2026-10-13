@@ -29,7 +29,7 @@ function historyToState(history) {
     const isAssistant = m.role === 'assistant'
     const content = []
     if (isAssistant) {
-      if (m.reasoning) content.push({ type: 'reasoning', text: m.reasoning })
+      if (m.reasoning) content.push({ type: 'reasoning', text: m.reasoning, durationMs: m.thinking_ms })
       for (const t of m.tools ?? []) {
         content.push({
           type: 'tool-call',
@@ -37,6 +37,8 @@ function historyToState(history) {
           toolName: t?.name,
           args: t?.args ?? {},
           result: t?.result,
+          phase: t?.phase,
+          elapsedMs: t?.elapsed_ms,
         })
       }
       // 历史里持久化的图表 spec -> chart part，刷新/切换会话后仍能恢复图表
@@ -67,7 +69,7 @@ function convertStateMessages(state) {
       const p = content[i]
       let mapped
       if (p?.type === 'reasoning') {
-        mapped = { type: 'reasoning', text: p.text ?? '' }
+        mapped = { type: 'reasoning', text: p.text ?? '', durationMs: p.durationMs }
       } else if (p?.type === 'text') {
         mapped = { type: 'text', text: p.text ?? '' }
       } else if (p?.type === 'tool-call') {
@@ -79,6 +81,8 @@ function convertStateMessages(state) {
           toolName: p.toolName,
           args,
           argsText: JSON.stringify(args),
+          phase: p.phase,
+          elapsedMs: p.elapsedMs,
         }
         if (p.result !== undefined && p.result !== null) mapped.result = p.result
       } else if (p?.type === 'clarification') {

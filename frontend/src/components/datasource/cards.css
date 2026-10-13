@@ -21,7 +21,7 @@
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.04), transparent);
+  background: linear-gradient(90deg, transparent, var(--dd-shimmer), transparent);
   animation: ds-shimmer 1.6s infinite;
 }
 @keyframes ds-shimmer {
@@ -178,6 +178,7 @@
   gap: 8px;
   font-size: 13.5px;
   color: var(--dd-text-3);
+  font-variant-numeric: tabular-nums;
 }
 /* lucide 默认 24px；本页按上下文字号 1em 继承（等价旧 antd 字体图标行为） */
 .dsrc-page :where(svg.lucide) {

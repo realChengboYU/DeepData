@@ -148,6 +148,23 @@ def introspect_schemas_raw(payload: TestIn) -> dict:
     return {"schemas": schemas}
 
 
+@router.post("/datasources/{source_id}/introspect/schemas")
+def introspect_schemas_source(
+    source_id: str, user_key: str = Depends(get_user_key)
+) -> dict:
+    """按已保存数据源凭据列出可用 schema（编辑态「获取 Schema」）。凭据取自库内，不依赖界面重输密码。"""
+    src = _get_owned(source_id, user_key)
+    try:
+        schemas = ds.list_target_schemas(
+            src["host"], src["port"], src["dbname"], src["username"], src["password"],
+            ssl=src.get("ssl", False),
+        )
+    except Exception as exc:
+        msg = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
+        raise HTTPException(status_code=502, detail=f"读取 schema 失败：{msg[:160]}")
+    return {"schemas": schemas}
+
+
 # ---------------------------------------------------------------------------
 # 策展：连目标库读元数据（表/字段/预览）+ 保存选中的表和注释
 # ---------------------------------------------------------------------------

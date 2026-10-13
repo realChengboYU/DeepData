@@ -5,6 +5,7 @@ import {
   Calendar,
   ChartLine,
   Check,
+  ChevronRight,
   CircleHelp,
   FileText,
   Globe,
@@ -122,6 +123,7 @@ export default function PromptBar({
   commands = DEFAULT_COMMANDS,
   models = DEFAULT_MODELS,
   defaultModel = '',
+  modelLabel = 'Model',
   efforts = DEFAULT_EFFORTS,
   defaultEffort = '',
   onEffortChange,
@@ -135,7 +137,7 @@ export default function PromptBar({
   background = '#ffffff',
   color = '#1d1d1f',
   menuBackground = '#ffffff',
-  sparkColor = '#2563eb',
+  sparkColor = '#1d1d1f',
   sparkBoost = 1,
   width = 400,
   radius = 16,
@@ -647,7 +649,7 @@ export default function PromptBar({
           {models.length > 0 ? (
             <button
               type="button"
-              className="prompt-bar__pick"
+              className="prompt-bar__pick prompt-bar__pick--model"
               aria-label="Choose model"
               aria-expanded={modelOpen}
               data-on={modelOpen ? '' : undefined}
@@ -660,8 +662,9 @@ export default function PromptBar({
                 focusInput();
               }}
             >
-              <span>{model.name}</span>
-              <ArrowDown size={12} strokeWidth={2.4} />
+              <span className="prompt-bar__pick-tag">{modelLabel}</span>
+              <span className="prompt-bar__pick-name">{model.name}</span>
+              <ChevronRight className="prompt-bar__pick-caret" size={13} strokeWidth={2.4} />
             </button>
           ) : null}
           {efforts.length > 0 ? (

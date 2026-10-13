@@ -13,7 +13,7 @@ import time
 import uuid
 from typing import AsyncIterator, Optional
 
-from openai import APITimeoutError
+from openai import APITimeoutError, APIStatusError
 
 from app.datasource.pg import PG_CONNECTION_STRING
 from app.prompt import build_messages
@@ -28,11 +28,16 @@ from app.services.pipeline.chart import (
 )
 from app.services.pipeline.clarify import (
     get_pending,
-    make_clarify_tool,
     parse_clarify,
     pop_pending,
     put_pending,
 )
+from app.services.pipeline.clarify_middleware import (
+    detect_clarification,
+    request_clarification,
+    resume_clarification,
+)
+from app.services.pipeline.time import make_time_tool
 from app.services.pipeline.graph import _GRAPH
 from app.services.pipeline.llm import LLM_TIMEOUT, _invoke_tool
 from app.services.pipeline.router import (
@@ -40,6 +45,7 @@ from app.services.pipeline.router import (
     recent_result_context,
     route_intent,
 )
+from app.services.schema_index import get_schema_context
 from app.skills import get_skill_context
 from app.tools.SQLTools.sql_tools import get_sql_tools
 
@@ -79,17 +85,23 @@ def _cached_invoke_tool(tools: list, call: dict) -> str:
     return result
 
 
-async def _invoke_tools_parallel(tools: list, calls: list) -> list[str]:
-    """并行执行多个互相独立的工具调用（B），用线程池跑同步工具，保持调用顺序。"""
+async def _invoke_tools_parallel(tools: list, calls: list) -> tuple[list[str], list[float]]:
+    """并行执行多个互相独立的工具调用（B），用线程池跑同步工具，保持调用顺序。
+
+    返回 (结果列表, 每个调用的耗时(毫秒))，供前端展示「SQL 查询耗时」等真实耗时。
+    """
     results: list[str] = [""] * len(calls)
+    elapsed: list[float] = [0.0] * len(calls)
     sem = asyncio.Semaphore(4)  # 限制并发，避免一次性打爆数据源
 
     async def _run(i: int, call: dict) -> None:
         async with sem:
+            t0 = time.monotonic()
             results[i] = await asyncio.to_thread(_cached_invoke_tool, tools, call)
+            elapsed[i] = (time.monotonic() - t0) * 1000
 
     await asyncio.gather(*[_run(i, call) for i, call in enumerate(calls)])
-    return results
+    return results, elapsed
 
 
 def _accumulate_tool_calls(tool_call_chunks: list) -> list:
@@ -131,8 +143,10 @@ async def _agent_stream(llm, tools: list, messages: list, max_iters: int = 8, st
     chart_yielded = False
     for _ in range(max_iters + 1):
         tcc: list = []
-        # 模型服务偶发慢：对单轮 LLM 调用做一次超时重试（重试会重新生成增量，偶发重复可接受）
-        for attempt in range(2):
+        # 模型网关偶发慢/5xx：对单轮 LLM 调用做重试（默认最多 3 次，递增退避），
+        # 扛住瞬时 502/503。重试会重新生成增量，偶发重复可接受。
+        max_attempts = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))
+        for attempt in range(max_attempts):
             try:
                 async for chunk in bound.astream(messages):
                     for b in (getattr(chunk, "content_blocks", None) or []):
@@ -149,10 +163,14 @@ async def _agent_stream(llm, tools: list, messages: list, max_iters: int = 8, st
                     if tcc_chunks:
                         tcc.extend(tcc_chunks)
                 break
-            except (APITimeoutError, TimeoutError):
-                if attempt == 0:
+            except (APITimeoutError, TimeoutError, APIStatusError) as exc:
+                should_retry = True
+                if isinstance(exc, APIStatusError):
+                    code = getattr(exc, "status_code", None)
+                    should_retry = code is not None and int(code) >= 500
+                if attempt < max_attempts - 1 and should_retry:
                     tcc = []
-                    await asyncio.sleep(1.5)
+                    await asyncio.sleep(1.5 * (attempt + 1))
                     continue
                 raise
         calls = _accumulate_tool_calls(tcc)
@@ -205,13 +223,15 @@ async def _agent_stream(llm, tools: list, messages: list, max_iters: int = 8, st
             # 让前端先收到 running 帧，再执行工具（否则会被并到同一个 update-state，看不到加载态）
             await asyncio.sleep(0)
             try:
-                results = await _invoke_tools_parallel(tools, query_calls)
+                results, elapsed = await _invoke_tools_parallel(tools, query_calls)
             except Exception as exc:  # 工具执行失败也不能挂起流（否则前端停在思考）
                 results = [f"工具执行失败：{exc}"] * len(query_calls)
-            for call, result in zip(query_calls, results):
+                elapsed = [0.0] * len(query_calls)
+            for i, (call, result) in enumerate(zip(query_calls, results)):
                 args = call.get("args") or {}
                 yield {"type": "tool", "name": call["name"], "args": args,
-                       "result": result, "phase": "query", "status": "done"}
+                       "result": result, "phase": "query", "status": "done",
+                       "elapsed_ms": int(elapsed[i])}
                 messages.append({
                     "role": "tool",
                     "content": result,
@@ -260,6 +280,8 @@ async def run_agent_stream(
     chart_events: list[dict] = []
     clarification_requested: Optional[dict] = None
     agent_state: dict = {"chart_attempted": False}
+    thinking_started: Optional[float] = None  # 首个 reasoning 增量出现时刻
+    thinking_end: Optional[float] = None      # 首个 text/tool 增量出现时刻（思考阶段结束）
     answer = ""
     reasoning = ""
 
@@ -270,7 +292,14 @@ async def run_agent_stream(
         api_key, base_url, model = llm_store.resolve_llm_config(user_key or "anonymous", model_id)
         if not api_key:
             raise RuntimeError("未配置对话模型：请在「设置」里配置模型（URL/名称/Key），或在 backend/.env 设置 LLM_API_KEY")
-        llm = ChatDeepSeek(model=model, api_key=api_key, base_url=base_url, temperature=0.7, timeout=LLM_TIMEOUT)
+        llm = ChatDeepSeek(model=model, api_key=api_key, base_url=base_url, temperature=0.3, timeout=LLM_TIMEOUT)
+        # Schema 精排 / 澄清检测用「专用小模型」（设置里可选），temp=0 更稳定；未选则跟随对话主模型。
+        # 精排是轻量筛选，给短超时（默认 15s）避免模型偶发慢时拖住整个流；超时则回退未精排。
+        rerank_key, rerank_base, rerank_model = llm_store.resolve_rerank_config(user_key or "anonymous", model_id)
+        rerank_llm = ChatDeepSeek(
+            model=rerank_model, api_key=rerank_key, base_url=rerank_base,
+            temperature=0.0, timeout=int(os.getenv("RERANK_TIMEOUT", "15")),
+        )
         # 数据源解析优先级：本次请求显式指定的 data_source_id（会话绑定的源）
         # > 该会话已绑定的数据源 > 用户「使用中」的数据源 > 环境变量 PG_CONNECTION_STRING。
         # 若本次带了 data_source_id，则同步持久化为该会话的绑定（供刷新 / 后续消息恢复）。
@@ -290,19 +319,92 @@ async def run_agent_stream(
         tools = get_sql_tools(llm, db_url=db_url)
         route = route_intent(q, bool(tools), has_recent_result(history))
 
+        # 意图识别先行：先判断用户意图/是否需要澄清，再决定是否需要召回 schema（需要才召回）。
+        # 所以 schema 召回移到 database_query 分支内、澄清判断之后执行（见下方）。
+
         if route == "database_query":
-            # 查询能力走 database_query Skill：注入 SKILL.md 指令 + 按 allowed_tools 收敛工具面 + 追加 clarify 工具。
+            # 查询能力走 database_query Skill：注入 SKILL.md 指令 + 按 allowed_tools 收敛工具面。
+            # 澄清由管线做（中间件），不再把 clarify 暴露为工具给模型。
             skill_instructions, allowed_tools = get_skill_context("database_query")
             tool_names = set(allowed_tools or [])
             sql_tools = [t for t in tools if getattr(t, "name", None) in tool_names]
-            bind_tools = list(sql_tools) + [make_clarify_tool(), make_chart_tool()]
-            messages = build_messages(history, question=q, skill_instructions=skill_instructions)
-            async for ev in _agent_stream(llm, bind_tools, messages, max_iters=5, state=agent_state):
+            bind_tools = list(sql_tools) + [make_chart_tool(), make_time_tool()]
+
+            # 澄清中间件：先做轻量歧义检测，命中则 interrupt 暂停工作流、把澄清交前端，等待 resume。
+            # 检测会临时调一次模型（temp=0，同步阻塞），用线程跑避免卡住事件循环；失败/超时回退“不澄清”。
+            try:
+                clarify_payload = await asyncio.to_thread(detect_clarification, q, rerank_llm)
+            except Exception:
+                clarify_payload = None
+            if clarify_payload:
+                try:
+                    request_clarification(clarify_payload, thread_id)
+                except Exception:
+                    pass  # 中断图初始化失败则继续走正常流程
+                put_pending(thread_id, clarify_payload)  # 供 assistant 路由判断本线程“有待澄清”
+
+                # 把澄清以 ask-question 代码块注入助手文本，前端 MarkdownText 渲染成可点击选项。
+                ask_options = []
+                for o in clarify_payload.get("options") or []:
+                    ask_options.append({
+                        "label": o.get("label", ""),
+                        "prompt": o.get("label", ""),
+                        "preferred": bool(o.get("preferred")),
+                    })
+                ask_json = json.dumps(
+                    {"question": clarify_payload.get("question", ""), "options": ask_options},
+                    ensure_ascii=False,
+                )
+                ask_block = f"```ask-question\n{ask_json}\n```"
+                yield {"type": "text", "delta": ask_block}
+
+                # 持久化：用户问题 + 带 ask-question 块的助手消息（供历史恢复）
+                try:
+                    full = history + [
+                        {"role": "user", "content": q},
+                        {"role": "assistant", "content": ask_block,
+                         "reasoning": "", "tools": [], "charts": [],
+                         "thinking_ms": 0, "clarification": True},
+                    ]
+                    _GRAPH.update_state(config, {"messages": full})
+                except Exception:
+                    pass
+
+                yield {
+                    "type": "done",
+                    "answer": ask_block,
+                    "reasoning": [],
+                    "tools": [],
+                    "thinking_ms": 0,
+                    "session_id": thread_id,
+                    "pending_clarification": clarify_payload,
+                }
+                return
+
+            # 意图确认不需要澄清，才召回 schema（仅当命中数据源时）；未就绪/失败时为空，不影响对话。
+            schema_context = ""
+            if target:
+                # 精排会再调一次模型（temp=0，同步阻塞），用线程跑避免卡住事件循环。
+                _, schema_context = await asyncio.to_thread(
+                    get_schema_context, target, user_key or "anonymous", q, 10, rerank_llm
+                )
+
+            messages = build_messages(
+                history, question=q, skill_instructions=skill_instructions,
+                schema_context=schema_context,
+            )
+            async for ev in _agent_stream(llm, bind_tools, messages, max_iters=10, state=agent_state):
                 if ev["type"] == "reasoning":
+                    if thinking_started is None:
+                        thinking_started = time.monotonic()
                     reasoning_parts.append(ev["delta"])
                 elif ev["type"] == "text":
+                    if thinking_started is not None and thinking_end is None:
+                        thinking_end = time.monotonic()
                     text_parts.append(ev["delta"])
                 elif ev["type"] == "tool":
+                    if thinking_started is not None and thinking_end is None:
+                        thinking_end = time.monotonic()
                     # 只收集带结果的事件（running 占位无 result，跳过以避免污染图表兜底解析）
                     if ev.get("result") is not None:
                         tool_events.append(ev)
@@ -317,12 +419,18 @@ async def run_agent_stream(
             rec = recent_result_context(history)
             user_content = f"{q}\n\n[已有查询结果]\n{rec}" if rec else q
             messages = build_messages(history, question=user_content, skill_instructions=skill_instructions)
-            async for ev in _agent_stream(llm, [make_chart_tool()], messages, max_iters=3, state=agent_state):
+            async for ev in _agent_stream(llm, [make_chart_tool()], messages, max_iters=6, state=agent_state):
                 if ev["type"] == "reasoning":
+                    if thinking_started is None:
+                        thinking_started = time.monotonic()
                     reasoning_parts.append(ev["delta"])
                 elif ev["type"] == "text":
+                    if thinking_started is not None and thinking_end is None:
+                        thinking_end = time.monotonic()
                     text_parts.append(ev["delta"])
                 elif ev["type"] == "tool":
+                    if thinking_started is not None and thinking_end is None:
+                        thinking_end = time.monotonic()
                     # 只收集带结果的事件（running 占位无 result，跳过以避免污染图表兜底解析）
                     if ev.get("result") is not None:
                         tool_events.append(ev)
@@ -355,6 +463,11 @@ async def run_agent_stream(
 
     answer = "".join(text_parts)
     reasoning = "".join(reasoning_parts)
+    thinking_ms = 0
+    if thinking_started is not None:
+        # 注意优先级：`or` 低于 `-`，必须先把基准求出来再减，否则会误用
+        # thinking_end（time.monotonic() 的绝对秒数）当作时长。
+        thinking_ms = int(((thinking_end or time.monotonic()) - thinking_started) * 1000)
 
     # 确定性兜底：用户要图（或模型尝试过 render_chart，或模型在推理/回答里表达了可视化意向）
     # 但没产出可用 chart 时，从最后一个表格型查询结果构建 spec。
@@ -375,7 +488,7 @@ async def run_agent_stream(
                 {"role": "user", "content": q},
                 {"role": "assistant", "content": answer or clarification_requested.get("question", ""),
                  "reasoning": reasoning, "tools": tool_events, "charts": chart_events,
-                 "clarification": True},
+                 "thinking_ms": thinking_ms, "clarification": True},
             ]
             _GRAPH.update_state(config, {"messages": full})
         except Exception:
@@ -385,6 +498,7 @@ async def run_agent_stream(
             "answer": answer,
             "reasoning": [reasoning] if reasoning else [],
             "tools": tool_events,
+            "thinking_ms": thinking_ms,
             "session_id": thread_id,
             "pending_clarification": clarification_requested,
         }
@@ -395,7 +509,7 @@ async def run_agent_stream(
         full = history + [
             {"role": "user", "content": q},
             {"role": "assistant", "content": answer, "reasoning": reasoning,
-             "tools": tool_events, "charts": chart_events},
+             "tools": tool_events, "charts": chart_events, "thinking_ms": thinking_ms},
         ]
         _GRAPH.update_state(config, {"messages": full})
     except Exception:
@@ -406,6 +520,7 @@ async def run_agent_stream(
         "answer": answer,
         "reasoning": [reasoning] if reasoning else [],
         "tools": tool_events,
+        "thinking_ms": thinking_ms,
         "session_id": thread_id,
     }
 
@@ -434,8 +549,10 @@ async def resume_clarify_stream(
     data_source_id: Optional[str] = None,
     model_id: Optional[str] = None,
 ) -> AsyncIterator[dict]:
-    """用户对澄清选择后的流式恢复：把选择写入历史并继续生成。
+    """用户对澄清选择后的流式恢复。
 
+    clarify 分支已把「问题 + ask-question 块」持久化到 checkpointer，这里只唤醒
+    interrupt 并以新一问续跑；本轮（用户选择 + 回答）由 run_agent_stream 在结尾持久化。
     复用 run_agent_stream 的流式事件（reasoning / text / tool / clarification / error / done）。
     """
     if not session_id:
@@ -447,17 +564,16 @@ async def resume_clarify_stream(
         return
     selected = _resolve_option(pending, option_label)
     label = selected.get("label") or str(selected.get("id"))
+    option_id = str(selected.get("id"))
 
-    history = get_history(session_id).get("messages") or []
-    full = history + [
-        {"role": "assistant", "content": pending.get("question", "请补充口径。"), "clarification": True},
-        {"role": "user", "content": f"我选择：{label}。"},
-    ]
-    config = {"configurable": {"thread_id": session_id}}
+    # 澄清中间件：用 Command(resume=...) 唤醒 interrupt，完成暂停->恢复。
     try:
-        _GRAPH.update_state(config, {"messages": full})
+        resume_clarification(option_id, session_id)
     except Exception:
         pass
+
+    # 历史已在 clarify 分支持久化（含 ask-question 块），这里直接以新一问续跑，
+    # run_agent_stream 会在结尾把本轮（用户选择 + 回答）持久化到 checkpointer。
     async for ev in run_agent_stream(f"基于我选择「{label}」，请继续。", session_id, user_key, data_source_id, model_id):
         yield ev
 

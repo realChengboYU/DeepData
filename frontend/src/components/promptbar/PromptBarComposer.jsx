@@ -4,13 +4,21 @@ import { Calendar, ChartLine, FileText, Globe, Mail } from 'lucide-react';
 import PromptBar from './PromptBar';
 import { useComposerControls } from './controls';
 import { useModelsStore } from '../../store/models';
+import { useThemeStore } from '../../store/theme';
+import { useI18n } from '../../i18n';
 
-// 平台主题色（DeepData 蓝调）
-const THEME = {
-  background: '#eff6ff', // 浅蓝雾面（输入框表面）
-  color: '#1e3a8a', // 深蓝墨水（文字/图标）
+// 平台主题色（中性框架默认，去蓝）：亮／暗自适应，保持单一 accent 语言
+const LIGHT_THEME = {
+  background: '#eef1f5', // 中性灰雾面（输入框表面）
+  color: '#1d1d1f', // 墨水（文字/图标）
   menuBackground: '#ffffff', // 下拉菜单表面
-  sparkColor: '#2563eb', // 主色蓝（火花/高亮/滑杆）
+  sparkColor: '#1d1d1f', // 主色（火花/高亮/滑杆）
+};
+const DARK_THEME = {
+  background: '#1a1d22',
+  color: '#e6e8ec',
+  menuBackground: '#1c1f24',
+  sparkColor: '#f2f3f5',
 };
 
 // 数据问答平台菜单项（不含附件 attach，避免死按钮）
@@ -31,12 +39,15 @@ const COMMANDS = [
 ];
 
 export function PromptBarComposer() {
+  const { t } = useI18n();
   const { onStop, send, composerRef } = useComposerControls();
   // 是否正在生成回复：驱动「发送 → 停止」的箭头变形
   const busy = useAuiState((s) => s.thread.isRunning);
   // 模型选择器：真实数据来自「设置 → 模型配置」（多模型 store，选中项持久化）
   const models = useModelsStore((s) => s.models);
   const selectedId = useModelsStore((s) => s.selectedId);
+  const theme = useThemeStore((s) => s.theme);
+  const THEME = theme === 'dark' ? DARK_THEME : LIGHT_THEME;
 
   const handleSend = useCallback(
     (text, opts) => {
@@ -63,6 +74,7 @@ export function PromptBarComposer() {
           tag: m.is_default ? '默认' : m.model || '自定义',
         }))}
         defaultModel={selectedId}
+        modelLabel={t('model')}
         efforts={[]}
         busy={busy}
         onSend={handleSend}

@@ -5,7 +5,7 @@
   --pb-w: min(var(--thread-max-width, 60rem), 100%);
   --pb-radius: 16px;
   --pb-press: 0.96;
-  --pb-spark: #b39dff;
+  --pb-spark: #1d1d1f;
   --pb-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --pb-muted: color-mix(in srgb, var(--pb-ink) 55%, transparent);
   --pb-hover: color-mix(in srgb, var(--pb-ink) 8%, transparent);
@@ -40,6 +40,8 @@
   /* 锚在「+」按钮之后，与模型触发钮左缘对齐 */
   left: 52px;
   width: 240px;
+  /* 紧贴模型胶囊顶部弹出（胶囊位于底部工具行，距输入条底约 44px） */
+  bottom: 46px;
   transform-origin: bottom left;
 }
 
@@ -318,35 +320,69 @@
 .prompt-bar__pick {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 9px;
-  border-radius: 8px;
-  background: transparent;
-  color: color-mix(in srgb, var(--pb-ink) 72%, transparent);
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dd-tint-active);
+  border: 1px solid var(--dd-line);
+  color: var(--dd-text-2);
   font-size: 12.5px;
   font-weight: 500;
   transition:
-    background-color 150ms ease,
-    color 150ms ease;
+    background-color 150ms var(--dd-ease),
+    border-color 150ms var(--dd-ease),
+    color 150ms var(--dd-ease);
 }
 
-.prompt-bar__tool[data-on],
-.prompt-bar__pick[data-on] {
+.prompt-bar__tool[data-on] {
   background: var(--pb-hover);
   color: var(--pb-ink);
 }
 
+.prompt-bar__pick[data-on] {
+  background: var(--dd-tint-active);
+  border-color: var(--dd-line-strong);
+  color: var(--dd-text-1);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .prompt-bar__tool:hover,
-  .prompt-bar__pick:hover {
+  .prompt-bar__tool:hover {
     background: var(--pb-hover);
     color: var(--pb-ink);
+  }
+  .prompt-bar__pick:hover {
+    background: var(--dd-tint-hover);
+    border-color: var(--dd-line-strong);
+    color: var(--dd-text-1);
   }
 }
 
 .prompt-bar__pick[data-max] {
-  color: var(--pb-spark);
+  color: var(--dd-text-1);
+  font-weight: 600;
+}
+
+/* 模型选择胶囊：左侧「模型」标签 + 模型名 + 右侧 chevron */
+.prompt-bar__pick--model {
+  gap: 8px;
+  padding: 0 10px;
+}
+.prompt-bar__pick-tag {
+  color: var(--dd-text-2);
+  font-weight: 500;
+}
+.prompt-bar__pick-name {
+  color: var(--dd-text-1);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.prompt-bar__pick-caret {
+  color: var(--dd-text-3);
+  transition: transform 180ms var(--dd-ease);
+}
+.prompt-bar__pick--model[data-on] .prompt-bar__pick-caret {
+  transform: rotate(-90deg);
 }
 
 .prompt-bar__menu[data-kind='effort'] {
@@ -506,7 +542,7 @@
 
 .prompt-bar__send[data-armed] {
   background: var(--dd-accent);
-  color: #ffffff;
+  color: var(--dd-canvas);
 }
 
 @media (hover: hover) and (pointer: fine) {

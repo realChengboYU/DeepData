@@ -13,7 +13,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--dd-surface);
 }
 
 .chat-body {
@@ -106,7 +106,7 @@
   width: 3px;
   height: 44px;
   border-radius: 999px;
-  background: #2563eb;
+  background: var(--dd-accent);
   opacity: 0.75;
 }
 .thread-resize-handle.left { left: -4px; }
@@ -128,7 +128,7 @@
   height: 26px;
   border-radius: 7px;
   object-fit: cover;
-  box-shadow: 0 1px 5px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 1px 5px rgba(24, 24, 27, 0.18);
 }
 .chat-name {
   font-size: 19px;
@@ -236,7 +236,7 @@
 }
 .rail-word {
   font-family: 'Geist Variable', system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--dd-accent-ink);
@@ -252,7 +252,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   padding: 0 2px;
 }
@@ -262,16 +262,16 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 11px;
+  gap: 12px;
   width: 100%;
-  height: 34px;
-  padding: 0 11px;
+  height: 38px;
+  padding: 0 12px;
   border: none;
   background: transparent;
   color: var(--dd-text-2);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: 9px;
   cursor: pointer;
   transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease), transform 0.12s var(--dd-ease);
 }
@@ -281,8 +281,8 @@
 }
 .rail-icon svg.lucide {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   transition: width 0.3s var(--dd-ease-out), height 0.3s var(--dd-ease-out);
 }
 .rail-icon-label {
@@ -304,8 +304,8 @@
 }
 .rail-icon-caret {
   margin-left: auto;
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   color: var(--dd-text-3);
 }
 .rail-icon.active .rail-icon-caret {
@@ -318,15 +318,15 @@
   padding: 0;
 }
 .chat-rail.collapsed .rail-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   justify-content: center;
   gap: 0;
   padding: 0;
 }
 .chat-rail.collapsed .rail-icon svg.lucide {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 /* 标签视觉隐藏但保留在可访问性树中（收缩态图标可被读屏朗读） */
 .chat-rail.collapsed .rail-icon-label {
@@ -378,7 +378,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 .rail-user-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   color: var(--dd-text-2);
   overflow: hidden;
@@ -401,8 +401,8 @@
   transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
 }
 .rail-toggle svg.lucide {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
 }
 .rail-toggle:hover {
   background: var(--dd-tint-hover);
@@ -561,7 +561,7 @@
   gap: 6px;
   height: 38px;
   margin-bottom: 14px;
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  border: 1px solid var(--dd-line);
   border-radius: var(--dd-r-md);
   cursor: pointer;
   background: var(--dd-tint-active);
@@ -571,8 +571,8 @@
   transition: background 0.2s var(--dd-ease), border-color 0.2s var(--dd-ease), transform 0.1s var(--dd-ease);
 }
 .side-new:hover {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.38);
+  background: var(--dd-tint-hover);
+  border-color: var(--dd-line-strong);
 }
 .side-new:active {
   transform: scale(0.985);
@@ -709,16 +709,16 @@
   flex: 1;
   min-width: 0;
   padding: 5px 8px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--dd-line-strong);
   border-radius: 7px;
-  background: #fff;
-  color: #1e3a8a;
+  background: var(--dd-surface);
+  color: var(--dd-text-1);
   font-size: 13px;
   outline: none;
 }
 .side-session-rename-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 2px var(--dd-ring);
 }
 .side-session-rename-ok,
 .side-session-rename-cancel {
@@ -735,10 +735,10 @@
   font-size: 13px;
   transition: all 0.15s ease;
 }
-.side-session-rename-ok { color: #2563eb; }
-.side-session-rename-ok:hover { background: rgba(37, 99, 235, 0.12); }
-.side-session-rename-cancel { color: #94a3b8; }
-.side-session-rename-cancel:hover { background: rgba(148, 163, 184, 0.15); }
+.side-session-rename-ok { color: var(--dd-accent); }
+.side-session-rename-ok:hover { background: var(--dd-tint-active); }
+.side-session-rename-cancel { color: var(--dd-text-3); }
+.side-session-rename-cancel:hover { background: var(--dd-tint-hover); }
 
 /* 用户消息文字在气泡内垂直居中：
    根因是消息 <p> 自带 margin-bottom:16px，把气泡撑高、文字贴顶。清掉边距即可让文字居中。 */
@@ -813,7 +813,7 @@
   right: 0;
   top: -28px;
   height: 28px;
-  background: linear-gradient(to top, #ffffff, rgba(255, 255, 255, 0));
+  background: linear-gradient(to top, var(--dd-surface), color-mix(in srgb, var(--dd-surface) 0%, transparent));
   pointer-events: none;
 }
 
@@ -840,7 +840,7 @@
   height: 34px;
   padding: 0;
   border: 1px solid var(--dd-line);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--dd-material);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   box-shadow: var(--dd-shadow-1);
@@ -931,7 +931,7 @@
   z-index: 30;
   min-width: 200px;
   padding: 8px;
-  background: color-mix(in srgb, #ffffff 0.9, transparent);
+  background: var(--dd-material);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border: 1px solid var(--dd-line);
@@ -943,7 +943,7 @@
   padding: 4px 10px 8px;
   font-size: 12px;
   font-weight: 650;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   text-align: left;
 }
 .mono {
@@ -969,6 +969,30 @@
 .chat-view.hidden,
 .ds-view.hidden {
   display: none;
+}
+
+/* ===== 暗色：滚动条 thumb 反色（深灰 thumb 在暗底下不可见） ===== */
+.dark .side-sessions {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.dark .side-sessions::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+.dark .side-sessions::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+.dark .aui-thread-viewport {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.dark .aui-thread-viewport::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+  border-color: transparent;
+  background-clip: content-box;
+}
+.dark .aui-thread-viewport::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: transparent;
+  background-clip: content-box;
 }
 
 

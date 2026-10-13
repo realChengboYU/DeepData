@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useI18n } from "@/i18n";
+import { useProcessPanelStore } from "@/store/chat-controls";
 import { cn } from "@/lib/utils";
 
 export const ANIMATION_DURATION = 200;
@@ -26,7 +27,7 @@ const ReasoningPreviewContext = createContext(false);
 const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
   variants: {
     variant: {
-      outline: "rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2",
+      outline: "rounded-lg border border-(--dd-line) bg-(--dd-tint-active) px-3 py-2",
       ghost: "",
       muted: "bg-muted/50 rounded-lg px-3 py-2",
     },
@@ -71,11 +72,12 @@ function ReasoningRoot({
 }: ReasoningRootProps) {
   const [initialOpen] = useState(defaultOpen);
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
+  const forceOpen = useProcessPanelStore((s) => s.forceOpen);
 
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled
     ? controlledOpen
-    : (userOpen ?? (streaming || initialOpen));
+    : (forceOpen !== null ? forceOpen : (userOpen ?? (streaming || initialOpen)));
   const isPreview = streaming === true && isOpen;
 
   const prevStreamingRef = useRef(streaming);
@@ -135,7 +137,7 @@ function ReasoningFade({
         data-slot="reasoning-fade"
         className={cn(
           "aui-reasoning-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
-          "bg-[linear-gradient(to_bottom,#eff6ff,transparent)]",
+          "bg-[linear-gradient(to_bottom,var(--dd-tint-active),transparent)]",
           "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
           "fade-in-0 animate-in",
           "animation-duration-(--animation-duration)",
@@ -151,7 +153,7 @@ function ReasoningFade({
       data-slot="reasoning-fade"
       className={cn(
         "aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8",
-        "bg-[linear-gradient(to_top,#eff6ff,transparent)]",
+        "bg-[linear-gradient(to_top,var(--dd-tint-active),transparent)]",
         "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,color-mix(in_oklab,var(--color-muted)_50%,var(--color-background)),transparent)]",
         "fade-in-0 animate-in",
         "animation-duration-(--animation-duration)",
@@ -178,7 +180,7 @@ function ReasoningTrigger({
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
       className={cn(
-        "aui-reasoning-trigger group/trigger text-[#2563eb] hover:text-[#1e3a8a] flex max-w-[75%] origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
+        "aui-reasoning-trigger group/trigger text-(--dd-accent) hover:text-(--dd-accent-ink) flex max-w-[75%] origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
         className,
       )}
       {...props}
@@ -221,7 +223,7 @@ function ReasoningContent({
     <CollapsibleContent
       data-slot="reasoning-content"
       className={cn(
-        "aui-reasoning-content text-[#1e3a8a] relative overflow-hidden text-sm outline-none",
+        "aui-reasoning-content text-(--dd-text-1) relative overflow-hidden text-sm outline-none",
         "group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
         "data-closed:animate-collapsible-up",
         "data-open:animate-collapsible-down",
@@ -297,7 +299,7 @@ function ReasoningText({
       ref={scrollRef}
       data-slot="reasoning-text"
       className={cn(
-        "aui-reasoning-text text-[#1e3a8a] relative z-0 max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty",
+        "aui-reasoning-text text-(--dd-text-1) relative z-0 max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty",
         "transform-gpu transition-[transform,opacity] ease-[cubic-bezier(0.32,0.72,0,1)]",
         "motion-reduce:animate-none",
         "group-data-open/collapsible-content:animate-in",

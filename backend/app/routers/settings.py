@@ -97,3 +97,26 @@ def set_llm_model_default(model_id: str, user_key: str = Depends(get_user_key)):
     if not ok:
         raise HTTPException(status_code=404, detail="model not found")
     return {"ok": True}
+
+
+# ===== Rerank / 澄清小模型：为当前用户指派一个「专用 rerank 模型」=====
+
+class RerankConfigRequest(BaseModel):
+    model_id: Optional[str] = None
+
+
+@router.get("/settings/llm/rerank")
+def get_rerank(user_key: str = Depends(get_user_key)):
+    """读取该用户指派给 rerank/澄清的模型；未指派返回空（跟随对话主模型）。"""
+    model_id = llm_store.get_rerank_model_id(user_key) or ""
+    model = llm_store.get_model(user_key, model_id) if model_id else None
+    return {"model_id": model_id, "model": model}
+
+
+@router.put("/settings/llm/rerank")
+def save_rerank(payload: RerankConfigRequest, user_key: str = Depends(get_user_key)):
+    """保存 rerank 模型（须属于该用户）；空串 = 跟随对话主模型。"""
+    ok = llm_store.set_rerank_model_id(user_key, payload.model_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="model not found")
+    return {"ok": True}

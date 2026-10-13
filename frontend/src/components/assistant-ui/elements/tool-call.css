@@ -1,0 +1,53 @@
+/* 工具调用面板：分组聚合 + 状态图标 + SQL 高亮（亮/暗色均与 --dd-* 令牌一致） */
+
+/* SQL 代码块：发丝线容器 + 令牌色随色板（不使用 github.css 的固定白底） */
+.aui-tool-sql {
+  overflow: hidden;
+}
+.aui-tool-sql-code {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-1);
+  overflow-x: auto;
+}
+.aui-tool-sql-code .hljs {
+  background: transparent;
+  color: inherit;
+}
+.aui-tool-sql-code .hljs-keyword { color: #374151; }
+.aui-tool-sql-code .hljs-string { color: #0a3069; }
+.aui-tool-sql-code .hljs-number { color: #0550ae; }
+.aui-tool-sql-code .hljs-comment { color: #6e7781; font-style: italic; }
+.aui-tool-sql-code .hljs-title,
+.aui-tool-sql-code .hljs-title.function_ { color: #6639ba; }
+.aui-tool-sql-code .hljs-built_in { color: #116329; }
+.aui-tool-sql-code .hljs-operator,
+.aui-tool-sql-code .hljs-word { color: #343841; }
+.aui-tool-sql-code .hljs-punctuation { color: #57606a; }
+.dark .aui-tool-sql-code .hljs-keyword { color: #ff7b72; }
+.dark .aui-tool-sql-code .hljs-string { color: #a5d6ff; }
+.dark .aui-tool-sql-code .hljs-number { color: #79c0ff; }
+.dark .aui-tool-sql-code .hljs-comment { color: #8b949e; }
+.dark .aui-tool-sql-code .hljs-title,
+.dark .aui-tool-sql-code .hljs-title.function_ { color: #d2a8ff; }
+.dark .aui-tool-sql-code .hljs-built_in { color: #ffa657; }
+.dark .aui-tool-sql-code .hljs-operator,
+.dark .aui-tool-sql-code .hljs-word { color: #b9bdc6; }
+.dark .aui-tool-sql-code .hljs-punctuation { color: #7d828c; }
+
+/* 结果 / 参数预览 */
+.aui-tool-pre {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  background: var(--dd-tint-hover);
+  color: var(--dd-text-2);
+  border-radius: 8px;
+  overflow: auto;
+}

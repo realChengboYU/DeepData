@@ -6,15 +6,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 蓝调色板（Tailwind v4 theme tokens） */
+/* 中性色盘（Tailwind v4 theme tokens，已去蓝对齐框架默认） */
 @theme {
-  --color-navy: #1e3a8a;
-  --color-primary: #2563eb;
-  --color-bright: #3b82f6;
-  --color-soft: #60a5fa;
-  --color-sky: #93c5fd;
-  --color-mist: #eff6ff;
-  --color-ink: #1e3a8a;
+  --color-navy: #1f2937;
+  --color-primary: #1d1d1f;
+  --color-bright: #374151;
+  --color-soft: #6b7280;
+  --color-sky: #d1d5db;
+  --color-mist: #f3f4f6;
+  --color-ink: #1f2937;
 
   --font-display: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -25,20 +25,21 @@
    hover = 中性灰；选中/激活 = 唯一 accent 蓝；
    发丝线 + 同色相柔影 + 统一圆角标度 */
 :root {
-  --dd-canvas: #f5f7fa;
+  --dd-canvas: #f7f8fa;
   --dd-surface: #ffffff;
   --dd-material: rgba(255, 255, 255, 0.78);
-  --dd-line: #e8edf4;
-  --dd-line-strong: #d8e0ea;
+  --dd-line: #e7e9ef;
+  --dd-line-strong: #d8dbe2;
   --dd-text-1: #1d1d1f;
-  --dd-text-2: #48484a;
-  --dd-text-3: #86868b;
-  --dd-accent: #2563eb;
-  --dd-accent-deep: #1d4ed8;
-  --dd-accent-ink: #1e3a8a;
+  --dd-text-2: #52525b;
+  --dd-text-3: #7f838c;
+  --dd-accent: #1d1d1f;
+  --dd-accent-deep: #111113;
+  --dd-accent-ink: #1d1d1f;
   --dd-tint-hover: rgba(0, 0, 0, 0.045);
-  --dd-tint-active: rgba(37, 99, 235, 0.1);
-  --dd-ring: rgba(37, 99, 235, 0.35);
+  --dd-tint-active: rgba(24, 24, 27, 0.08);
+  --dd-ring: rgba(29, 29, 31, 0.4);
+  --dd-shimmer: rgba(0, 0, 0, 0.05);
   --dd-r-sm: 8px;
   --dd-r-md: 10px;
   --dd-r-lg: 14px;
@@ -81,10 +82,34 @@ body {
   cursor: pointer;
   font-weight: 600;
   border-radius: 0.875rem;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition: background-color 0.2s var(--dd-ease), transform 0.12s var(--dd-ease-out), box-shadow 0.2s var(--dd-ease);
 }
 .btn:active {
   transform: translateY(1px);
+}
+
+/* 文本选中：中性墨色，随主题 */
+::selection {
+  background: rgba(24, 24, 27, 0.14);
+  color: inherit;
+}
+
+/* 细滚动条：产品表面一致的中性灰 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 124, 132, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(120, 124, 132, 0.5);
 }
 
 /* 入场动画（登录页使用） */
@@ -229,6 +254,62 @@ body {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ===== DeepData 暗色（Apple 深色桌面语言）：近黑画布 + 抬升表面 + 亮色文字 + 柔光阴影 ===== */
+html.dark {
+  color-scheme: dark;
+}
+.dark {
+  --dd-canvas: #0e0f12;
+  --dd-surface: #16181d;
+  --dd-material: rgba(22, 24, 29, 0.8);
+  --dd-line: #272a30;
+  --dd-line-strong: #363a42;
+  --dd-text-1: #f2f3f5;
+  --dd-text-2: #bcc0c8;
+  --dd-text-3: #82868f;
+  --dd-accent: #f2f3f5;
+  --dd-accent-deep: #e6e8ec;
+  --dd-accent-ink: #f2f3f5;
+  --dd-tint-hover: rgba(255, 255, 255, 0.06);
+  --dd-tint-active: rgba(255, 255, 255, 0.11);
+  --dd-ring: rgba(242, 243, 245, 0.5);
+  --dd-shimmer: rgba(255, 255, 255, 0.07);
+  --dd-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 6px rgba(0, 0, 0, 0.3);
+  --dd-shadow-2: 0 8px 28px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.38);
+  --dd-shadow-3: 0 24px 64px rgba(0, 0, 0, 0.66), 0 4px 16px rgba(0, 0, 0, 0.42);
+}
+
+/* 数据源页硬编码的亮色薄片/状态色 → 暗色可读（提高对比） */
+.dark .ds-card-icon,
+.dark .ds-empty-mark,
+.dark .dsrc-type-glyph {
+  background: #1a1d22;
+  box-shadow: inset 0 0 0 1px rgba(242, 243, 245, 0.14);
+}
+.dark .dsrc-type-glyph.soon {
+  background: #1a1d22;
+  filter: grayscale(1);
+}
+.dark .dsrc-topbar-badge,
+.dark .ds-switcher-opt-main {
+  color: #c9cdd6;
+}
+.dark .ds-test.ok,
+.dark .ds-card-status {
+  color: #5ddb8b;
+}
+.dark .ds-test.err,
+.dark .ds-bannertest,
+.dark .ds-act-btn.danger:hover:not(:disabled),
+.dark .ds-dialog-actions .danger {
+  color: #ff7d92;
+}
+/* 原生控件（Windows 深色模式）显式着色 */
+.dark select {
+  background-color: var(--dd-surface);
+  color: var(--dd-text-1);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -240,7 +321,6 @@ body {
     @apply font-sans;
   }
 }
-
 @custom-variant data-open (&:where([data-state="open"], [data-open]:not([data-open="false"])));
 
 @custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));

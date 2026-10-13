@@ -128,6 +128,71 @@
   width: 14px;
   height: 14px;
 }
+/* 加载态骨架（与表结构/列表一致：浅底块发丝线 + shimmer，尊重 prefers-reduced-motion） */
+.dsrc-skel-sheet {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+  overflow: hidden;
+}
+.dsrc-skel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--dd-line);
+}
+.dsrc-skel-row:last-child {
+  border-bottom: none;
+}
+.dsrc-skel-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--dd-tint-hover);
+  overflow: hidden;
+}
+.dsrc-skel-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--dd-shimmer), transparent);
+  animation: ds-shimmer 1.6s infinite;
+}
+.dsrc-skel-sheet .w-xs { width: 14%; }
+.dsrc-skel-sheet .w-sm { width: 24%; }
+.dsrc-skel-sheet .w-md { width: 36%; }
+.dsrc-skel-sheet .w-lg { width: 52%; }
+.dsrc-skel-pill {
+  margin-left: auto;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--dd-tint-hover);
+}
+.dsrc-skel-sheet .dsrc-skel-circle {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--dd-tint-hover);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsrc-skel-bar::before { animation: none; }
+}
+
+/* 长清单虚拟化：content-visibility 跳过屏外行的渲染/布局，原生内存化；
+   contain-intrinsic-size 预留默认高度，保持滚动条稳定（规范推荐替代整表渲染） */
+.dsrc-sheet-list > label,
+.dsrc-tables-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
 /* 「勾选表」底部 sheet（Apple bottom sheet）：portal 到 body，fixed 视口锚定，
    从底部上滑；自身头部（标题/计数/搜索/全选）+ 列表内滚 + 底部操作栏 */
 .dsrc-sheet-scrim {
@@ -164,6 +229,7 @@
   box-shadow: var(--dd-shadow-3), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   transform: translateY(100%);
   transition: transform 0.32s var(--dd-ease-pop);
+  overscroll-behavior: contain;
 }
 .dsrc-sheet.open {
   transform: translateY(0);
@@ -334,11 +400,12 @@
   font-size: 12.5px;
   color: var(--dd-text-3);
   border-bottom: 1px solid var(--dd-line);
+  font-variant-numeric: tabular-nums;
 }
 .dsrc-tables-state {
   padding: 24px 12px;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-3);
   display: flex;
   align-items: center;
@@ -360,10 +427,20 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  width: 100%;
   padding: 8px 10px;
+  border: none;
   border-radius: var(--dd-r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: background 0.13s var(--dd-ease);
+}
+.dsrc-table:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
 }
 .dsrc-table:hover {
   background: var(--dd-tint-hover);
@@ -401,17 +478,18 @@
   gap: 6px;
 }
 .dsrc-ds-title {
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--dd-text-1);
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .dsrc-ds-comment {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-3);
   line-height: 1.5;
 }
@@ -437,12 +515,12 @@
   border-radius: 9px;
 }
 .dsrc-tab {
-  padding: 5px 14px;
+  padding: 6px 14px;
   border: none;
   border-radius: 7px;
   background: transparent;
   color: var(--dd-text-2);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s var(--dd-ease), color 0.15s var(--dd-ease);
@@ -480,63 +558,85 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-1);
 }
 .dsrc-fields-search input::placeholder {
   color: var(--dd-text-3);
 }
 
-/* 字段表格（参照表管理页：表头浅底 + 发丝线行 + 右对齐启用开关） */
-.dsrc-struct-wrap {
-  border: 1px solid var(--dd-line);
-  border-radius: var(--dd-r-md);
-  background: var(--dd-surface);
-  overflow-x: auto;
-}
-.dsrc-struct {
-  width: 100%;
+/* ========== 数据表格（表结构 / 数据预览 统一语言） ==========
+   两处共用同一套 表头 / 单元格 / 行悬停 / 粘连表头 / 容器：
+   表结构(.dsrc-struct) 与 数据预览(.dsrc-preview-table)，页签切换视觉一致。
+   仅保留内容差异：字段名/类型等宽、注释正文；预览数据全等宽。 */
+.dsrc-struct,
+.dsrc-preview-table {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
-.dsrc-struct th {
+/* 表头：浅底 + 粘连 top + 发丝线 + 不换行（两表一致） */
+.dsrc-struct thead th,
+.dsrc-preview-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   text-align: left;
-  padding: 9px 12px;
+  padding: 10px 12px;
   background: var(--dd-canvas);
   color: var(--dd-text-2);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.02em;
   border-bottom: 1px solid var(--dd-line-strong);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.dsrc-struct td {
-  padding: 8px 12px;
+/* 单元格：统一内边距 / 行高 / 发丝线 / 垂直居中（两表一致） */
+.dsrc-struct tbody td,
+.dsrc-preview-table tbody td {
+  padding: 9px 12px;
   border-bottom: 1px solid var(--dd-line);
   vertical-align: middle;
-  line-height: 20px;
+  line-height: 22px;
+  font-size: 14px;
 }
-.dsrc-struct tbody tr:last-child td {
+.dsrc-struct tbody tr:last-child td,
+.dsrc-preview-table tbody tr:last-child td {
   border-bottom: none;
 }
-.dsrc-struct tbody tr:hover td {
+.dsrc-struct tbody tr:hover td,
+.dsrc-preview-table tbody tr:hover td {
   background: var(--dd-tint-hover);
+}
+/* 容器：两表默认宽高 = 原「表结构」：宽度100%、高度内容自适应、仅横向滚动（切页签不跳变） */
+.dsrc-struct-wrap,
+.dsrc-preview {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--dd-line);
+  border-radius: var(--dd-r-md);
+  background: var(--dd-surface);
+}
+
+/* 表结构（字段标识类：等宽 + 分列色阶） */
+.dsrc-struct {
+  width: 100%;
 }
 .dsrc-struct-name {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--dd-text-1);
   white-space: nowrap;
 }
 .dsrc-struct-type {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-3);
   white-space: nowrap;
 }
 .dsrc-struct-comment {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-2);
   white-space: normal;
   word-break: break-word;
@@ -546,9 +646,26 @@
 .dsrc-struct tr.off .dsrc-struct-comment {
   color: var(--dd-text-3);
 }
-.dsrc-struct-on {
+.dsrc-struct .dsrc-struct-on {
   text-align: right;
   width: 64px;
+}
+
+/* 数据预览（数据值全等宽 + 不换行） */
+/* 多行数据限高内滚，避免撑长右面板；少于限高时按内容高度（默认=表结构），粘性表头生效 */
+.dsrc-preview {
+  max-height: 320px;
+  overflow: auto;
+}
+.dsrc-preview-table {
+  width: max-content;
+  min-width: 100%;
+  color: var(--dd-text-2);
+}
+.dsrc-preview-table tbody td {
+  color: var(--dd-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
 }
 /* 表结构底栏：左 已启用计数 / 右 分页器（10 条/页） */
 .dsrc-struct-pager {
@@ -559,8 +676,9 @@
   padding: 10px 2px 0;
 }
 .dsrc-struct-foot {
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--dd-text-3);
+  font-variant-numeric: tabular-nums;
 }
 .dsrc-pager {
   display: inline-flex;
@@ -570,12 +688,12 @@
 .dsrc-pager-btn {
   display: inline-flex;
   align-items: center;
-  height: 26px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 11px;
   background: var(--dd-surface);
   border: 1px solid var(--dd-line-strong);
   border-radius: var(--dd-r-sm);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-2);
   cursor: pointer;
   transition: color 0.15s var(--dd-ease), border-color 0.15s var(--dd-ease);
@@ -589,7 +707,7 @@
   cursor: default;
 }
 .dsrc-pager-ind {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dd-text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -651,40 +769,9 @@
   }
 }
 
-/* 数据预览：固定高度滚动框，宽表出横向滚动条、多行出纵向滚动条 */
-.dsrc-preview {
-  overflow: auto;
-  max-height: 280px;
-  border: 1px solid var(--dd-line);
-  border-radius: var(--dd-r-md);
-}
-.dsrc-preview-table {
-  border-collapse: collapse;
-  font-size: 13px;
-  width: max-content;
-  min-width: 100%;
-}
-.dsrc-preview-table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--dd-canvas);
-  color: var(--dd-text-2);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  text-align: left;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--dd-line-strong);
-  white-space: nowrap;
-}
-.dsrc-preview-table td {
-  padding: 8px 12px;
-  color: var(--dd-text-2);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  border-bottom: 1px solid var(--dd-line);
-  white-space: nowrap;
-  line-height: 20px;
+/* 右侧面板统一放大（作用于 .dsrc-tables-right 内）：自定义注释标签同步 14px */
+.dsrc-tables-right .ds-field label {
+  font-size: 14px;
 }
 
 /* 窄屏：回到单列堆叠（列表限高内滚，框架不变） */

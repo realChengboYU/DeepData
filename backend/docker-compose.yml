@@ -1,8 +1,9 @@
 # DeepData 智能体记忆存储：本地一个 PostgreSQL，专用库 askdata_memory。
+# 用带 pgvector 的镜像（pgvector 扩展供字段向量召回使用）。
 # 用法： docker compose up -d
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: askdata-postgres
     restart: unless-stopped
     environment:

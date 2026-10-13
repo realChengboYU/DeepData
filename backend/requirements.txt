@@ -10,6 +10,9 @@ langsmith>=0.13
 langchain-openai>=1.6
 langchain-deepseek>=1.1
 langchain-community>=0.4
+# 字段向量召回（PGVector 存储，需目标库启用 vector 扩展）
+langchain-postgres>=0.0.18
+pgvector>=0.3.6
 sqlalchemy>=2.0
 python-dotenv>=1.0
 cryptography>=43.0

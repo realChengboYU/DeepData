@@ -3,7 +3,26 @@ import { createPortal } from 'react-dom'
 import { CircleCheck, LayoutGrid, Loader2, Pencil, Search, Table, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { getCuratedTables, introspectFields, introspectPreview, introspectTables, saveCuratedTables } from '../../api'
+import { useDialogFocus } from './useDialogFocus'
 import './tables.css'
+
+// 加载态骨架（与表结构/列表一致的浅底块 + shimmer；aria-live 播报 Loading…）
+function SkelSheet({ rows = 6, table = false }) {
+  return (
+    <div className="dsrc-skel-sheet" role="status" aria-live="polite">
+      <span className="sr-only">Loading…</span>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div className="dsrc-skel-row" key={i} aria-hidden="true">
+          {table && <span className="dsrc-skel-circle" />}
+          <span className="dsrc-skel-bar w-sm" />
+          <span className="dsrc-skel-bar w-xs" />
+          <span className="dsrc-skel-bar w-lg" />
+          {table && <span className="dsrc-skel-pill" />}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // 第 3 步：选择表（左表清单 + 右字段/注释/预览）
 export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, backLabel, onError }) {
@@ -32,6 +51,11 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
   const [sheetClosing, setSheetClosing] = useState(false)
   const closeTimer = useRef(null)
   const tablesRef = useRef([])
+  const pickerSheetRef = useRef(null)
+  const structTabRef = useRef(null)
+  const previewTabRef = useRef(null)
+  // 「勾选表」sheet：搜索框 autoFocus 接管初始焦点，hook 只做 Tab 陷阱 + 关闭还原
+  useDialogFocus(pickerSheetRef, pickerOpen, { initialFocus: false })
   useEffect(() => {
     tablesRef.current = tables
   }, [tables])
@@ -240,6 +264,25 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
     if (!preview && !previewLoading) doPreview()
   }
 
+  // 页签键盘导航：←/→ 与 Home/End 在「表结构 / 数据预览」间切换并聚焦
+  const onTabsKeyDown = (e) => {
+    const cur = view === 'struct' ? 0 : 1
+    let next = cur
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (cur + 1) % 2
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (cur - 1 + 2) % 2
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = 1
+    else return
+    e.preventDefault()
+    if (next === 0) {
+      openStruct()
+      structTabRef.current?.focus()
+    } else {
+      openPreview()
+      previewTabRef.current?.focus()
+    }
+  }
+
   async function save() {
     if (saving || !tables.length) return
     setSaving(true)
@@ -290,9 +333,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
               <span>{t('ds.selectedCount', { n: checkedCount, total: tables.length })}</span>
             </div>
             {loading ? (
-              <div className="dsrc-tables-state">
-                <Loader2 className="spin" /> {t('ds.tablesLoading')}
-              </div>
+              <SkelSheet rows={6} />
             ) : tables.length === 0 ? (
               <div className="dsrc-tables-state">{t('ds.tablesEmpty')}</div>
             ) : checkedList.length === 0 ? (
@@ -302,14 +343,17 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
             ) : (
               <ul className="dsrc-tables-list">
                 {sidebarFiltered.map((x) => (
-                  <li
-                    key={x.table_name}
-                    className={`dsrc-table${active === x.table_name ? ' active' : ''}`}
-                    onClick={() => { setActive(x.table_name); setView('struct') }}
-                  >
-                    <Table className="dsrc-table-icon" aria-hidden="true" />
-                    <span className="dsrc-table-name">{x.table_name}</span>
-                    {x.custom_comment && <Pencil className="dsrc-table-note" aria-hidden="true" />}
+                  <li key={x.table_name}>
+                    <button
+                      type="button"
+                      className={`dsrc-table${active === x.table_name ? ' active' : ''}`}
+                      aria-current={active === x.table_name ? 'true' : undefined}
+                      onClick={() => { setActive(x.table_name); setView('struct') }}
+                    >
+                      <Table className="dsrc-table-icon" aria-hidden="true" />
+                      <span className="dsrc-table-name">{x.table_name}</span>
+                      {x.custom_comment && <Pencil className="dsrc-table-note" aria-hidden="true" />}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -336,6 +380,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                   <label htmlFor="ds-custom-comment">{t('ds.customComment')}</label>
                   <textarea
                     id="ds-custom-comment"
+                    name="ds-custom-comment"
                     className="ds-input ds-input-area"
                     rows={2}
                     value={activeRow?.custom_comment || ''}
@@ -345,11 +390,13 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                 </div>
 
                 <div className="dsrc-viewrow">
-                  <div className="dsrc-tabs" role="tablist" aria-label={t('ds.fields')}>
+                  <div className="dsrc-tabs" role="tablist" aria-label={t('ds.fields')} onKeyDown={onTabsKeyDown}>
                     <button
                       type="button"
                       role="tab"
+                      ref={structTabRef}
                       aria-selected={view === 'struct'}
+                      aria-controls="ds-panel-struct"
                       className={`dsrc-tab${view === 'struct' ? ' on' : ''}`}
                       onClick={openStruct}
                     >
@@ -358,7 +405,9 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                     <button
                       type="button"
                       role="tab"
+                      ref={previewTabRef}
                       aria-selected={view === 'preview'}
+                      aria-controls="ds-panel-preview"
                       className={`dsrc-tab${view === 'preview' ? ' on' : ''}`}
                       onClick={openPreview}
                     >
@@ -379,7 +428,7 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                       <Loader2 className="spin" /> {t('ds.previewLoading')}
                     </div>
                   ) : preview && preview.columns.length ? (
-                    <div className="dsrc-preview">
+                    <div className="dsrc-preview" role="tabpanel" id="ds-panel-preview">
                       <table className="dsrc-preview-table">
                         <thead>
                           <tr>
@@ -404,12 +453,10 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                     <div className="dsrc-tables-state">{t('ds.previewEmpty')}</div>
                   )
                 ) : fieldsLoading ? (
-                  <div className="dsrc-tables-state">
-                    <Loader2 className="spin" />
-                  </div>
+                  <SkelSheet rows={6} table />
                 ) : (activeRow?.fields || []).length ? (
                   <>
-                    <div className="dsrc-struct-wrap">
+                    <div className="dsrc-struct-wrap" id="ds-panel-struct">
                       <table className="dsrc-struct">
                         <thead>
                           <tr>
@@ -521,6 +568,8 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
             className={`dsrc-sheet${sheetShown && !sheetClosing ? ' open' : ''}${sheetClosing ? ' closing' : ''}`}
             role="dialog"
             aria-modal="true"
+            tabIndex={-1}
+            ref={pickerSheetRef}
             aria-label={t('ds.pickTables')}
           >
             <div className="dsrc-sheet-grip" aria-hidden="true" />
@@ -545,7 +594,9 @@ export default function TableSelectStep({ sourceId, onSaved, onCancel, onPrev, b
                 <span>{t('ds.selectAll')}</span>
               </label>
               <div className="dsrc-sheet-list">
-                {tables.length === 0 ? (
+                {loading ? (
+                  <SkelSheet rows={8} />
+                ) : tables.length === 0 ? (
                   <div className="dsrc-tables-state">{t('ds.tablesEmpty')}</div>
                 ) : pickFiltered.length === 0 ? (
                   <div className="dsrc-tables-state">{t('ds.noTableMatch')}</div>

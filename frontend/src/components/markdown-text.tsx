@@ -17,9 +17,10 @@ import {
   useMessagePartText,
   type TextMessagePartProps,
 } from "@assistant-ui/react";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CircleHelpIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/tooltip-icon-button";
+import { useComposerControls } from "@/components/promptbar/controls";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -72,6 +73,7 @@ const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
       rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
       className="aui-md"
       components={markdownComponents}
+      componentsByLanguage={askQuestionComponentsByLanguage}
       defer
     />
   );
@@ -127,6 +129,140 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
       </TooltipIconButton>
     </div>
   );
+};
+
+const ASK_QUESTION_LANG = "ask-question";
+
+type AskOption = {
+  label?: string;
+  prompt?: string;
+  preferred?: boolean;
+};
+
+/**
+ * 澄清确认卡片：把 ```ask-question``` 代码块渲染成可点击的「自动发送」选项。
+ *
+ * 视觉语言对齐项目 token（--dd-*）：单色 + 单一强调、`--dd-r-*` 圆角标尺
+ * （卡片 lg 14px / 选项行 md 10px / 序号徽标 sm 8px）、`--dd-shadow-1` 抬升、
+ * 顶部 canvas 着色区区分"问题"与"选项"。动效仅做"到达 + 反馈"，尊重 reduced-motion。
+ */
+function AskQuestionBlock({ json }: { json: string }) {
+  const { t } = useI18n();
+  const { send } = useComposerControls();
+
+  let question = "";
+  let options: AskOption[] = [];
+  try {
+    const data = JSON.parse(json);
+    question = String(data?.question ?? "").trim();
+    options = Array.isArray(data?.options) ? data.options : [];
+  } catch {
+    // 解析失败则回退为普通代码块
+  }
+
+  const chips = options.filter((o) => o?.label || o?.prompt);
+
+  const pick = (prompt?: string) => {
+    const text = prompt?.trim();
+    if (!text) return;
+    send?.({ role: "user", content: text });
+  };
+
+  // 完全没解析出来：保留原始 JSON 作兜底，避免信息丢失
+  if (!chips.length && !question) {
+    return (
+      <pre className="aui-md-pre my-2 overflow-x-auto rounded-(--dd-r-lg) border border-(--dd-line-strong) bg-(--dd-canvas) p-3.5 text-[13px] leading-relaxed text-(--dd-text-2)">
+        {json}
+      </pre>
+    );
+  }
+
+  const header = (
+    <div className="flex items-start gap-3 border-b border-(--dd-line) bg-(--dd-canvas) px-4 py-3">
+      <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--dd-tint-active) text-(--dd-accent)">
+        <CircleHelpIcon className="size-3.5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium uppercase tracking-[0.16em] text-(--dd-text-2)">
+          {t("clarifyLabel")}
+        </span>
+        {question && (
+          <span className="mt-1 block text-[15px] font-medium leading-snug text-(--dd-text-1)">
+            {question}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+
+  // 有题目但没可选选项：退化为「请直接回复」提示
+  if (!chips.length) {
+    return (
+      <div className="aui-clarification my-2 overflow-hidden rounded-(--dd-r-lg) border border-(--dd-line-strong) bg-(--dd-surface) shadow-(--dd-shadow-1) animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out motion-reduce:animate-none">
+        {header}
+        <div className="px-4 py-3 text-sm leading-relaxed text-(--dd-text-2)">
+          {t("clarifyNoOptions")}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-slot="aui_ask_question"
+      className="aui-clarification my-2 overflow-hidden rounded-(--dd-r-lg) border border-(--dd-line-strong) bg-(--dd-surface) shadow-(--dd-shadow-1) animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out motion-reduce:animate-none"
+    >
+      {header}
+
+      <div className="flex flex-col gap-1 p-2">
+        {chips.map((o, i) => (
+          <button
+            key={o.prompt ?? o.label ?? i}
+            type="button"
+            onClick={() => pick(o.prompt ?? o.label)}
+            className="group flex w-full items-center justify-between gap-3 rounded-(--dd-r-md) px-2.5 py-2 text-left transition-[background-color,transform] duration-150 ease-out outline-none hover:bg-(--dd-tint-hover) focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(--dd-ring) active:scale-[0.98] motion-reduce:transition-none"
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-(--dd-r-sm) text-[11px] font-medium tabular-nums transition-colors duration-150 motion-reduce:transition-none",
+                  o.preferred
+                    ? "border border-(--dd-accent) bg-(--dd-accent) text-(--dd-canvas) group-hover:bg-(--dd-accent-deep)"
+                    : "border border-(--dd-line) bg-(--dd-canvas) text-(--dd-text-3) group-hover:border-(--dd-accent) group-hover:text-(--dd-accent)",
+                )}
+              >
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium leading-snug text-(--dd-text-1)">
+                  {o.label ?? o.prompt}
+                  {o.preferred && (
+                    <span className="ml-1.5 rounded-full bg-(--dd-tint-active) px-1.5 py-0.5 align-middle text-[10px] font-medium text-(--dd-accent)">
+                      {t("clarifyRecommended")}
+                    </span>
+                  )}
+                </span>
+              </span>
+            </span>
+            <ChevronRightIcon
+              className="size-4 shrink-0 text-(--dd-text-3) transition-[transform,color] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-(--dd-accent) motion-reduce:transition-none"
+              aria-hidden
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 对 ```ask-question``` 语言块的完全接管：不渲染代码高亮头部与代码外框，直接渲染可选项 UI。
+const askQuestionComponentsByLanguage = {
+  [ASK_QUESTION_LANG]: {
+    CodeHeader: () => null,
+    SyntaxHighlighter: ({ code }: { code?: string }) => (
+      <AskQuestionBlock json={String(code ?? "").trim()} />
+    ),
+  },
 };
 
 const defaultComponents = memoizeMarkdownComponents({

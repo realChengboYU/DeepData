@@ -54,7 +54,7 @@ def get_llm() -> Optional["object"]:
         model=model,
         api_key=api_key,
         base_url=base_url,
-        temperature=0.7,
+        temperature=0.3,
         timeout=LLM_TIMEOUT,
     )
 
@@ -99,7 +99,7 @@ def chat_completion(
     messages = build_messages(conversation, skill_instructions=skill_instructions)
 
     try:
-        llm = ChatDeepSeek(model=m, api_key=api_key, base_url=base_url, temperature=0.7, timeout=LLM_TIMEOUT)
+        llm = ChatDeepSeek(model=m, api_key=api_key, base_url=base_url, temperature=0.3, timeout=LLM_TIMEOUT)
         text_parts: list[str] = []
         reasoning_parts: list[str] = []
         for chunk in llm.stream(messages):

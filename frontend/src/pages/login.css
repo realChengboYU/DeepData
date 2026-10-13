@@ -14,11 +14,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #dbeafe;
+  border-right: 1px solid var(--dd-line);
   background:
-    radial-gradient(900px 620px at 12% -8%, rgba(96, 165, 250, 0.26), transparent 60%),
-    radial-gradient(800px 560px at 108% 112%, rgba(37, 99, 235, 0.12), transparent 58%),
-    linear-gradient(180deg, #eaf2fe 0%, #f4f8ff 100%);
+    radial-gradient(900px 620px at 12% -8%, rgba(148, 163, 184, 0.22), transparent 60%),
+    radial-gradient(800px 560px at 108% 112%, rgba(24, 24, 27, 0.05), transparent 58%),
+    linear-gradient(180deg, #f3f4f6 0%, #f7f8fa 100%);
 }
 
 /* 细点阵网格（海军墨色微点，随底色同族） */
@@ -26,7 +26,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(30, 58, 138, 0.09) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(100, 116, 139, 0.10) 1px, transparent 1px);
   background-size: 26px 26px;
   pointer-events: none;
 }
@@ -46,7 +46,7 @@
   position: relative;
   z-index: 2;
   width: min(440px, 84%);
-  color: #1e3a8a;
+  color: var(--dd-accent-ink);
 }
 
 .brand-head {
@@ -61,8 +61,8 @@
   height: 44px;
   border-radius: 10px;
   object-fit: cover;
-  border: 1px solid rgba(30, 58, 138, 0.18);
-  box-shadow: 0 4px 16px rgba(30, 58, 138, 0.14);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  box-shadow: 0 4px 16px rgba(24, 24, 27, 0.12);
 }
 
 .brand-name {
@@ -79,7 +79,7 @@
 }
 
 .brand-name.deepdata-word {
-  color: #1e3a8a;
+  color: var(--dd-accent-ink);
 }
 
 .brand-pitch {
@@ -89,7 +89,7 @@
   line-height: 1.24;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #1e3a8a;
+  color: var(--dd-accent-ink);
   text-wrap: balance;
 }
 
@@ -98,7 +98,7 @@
   max-width: 40ch;
   font-size: 15px;
   line-height: 1.75;
-  color: #5b6b82;
+  color: var(--dd-text-2);
 }
 
 /* 产品实况 mock：一个完整的「问 → 答」产品时刻（Apple 材质卡片） */
@@ -113,8 +113,8 @@
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(20px) saturate(1.8);
   box-shadow:
-    0 24px 60px rgba(30, 58, 138, 0.12),
-    0 2px 8px rgba(30, 58, 138, 0.06),
+    0 24px 60px rgba(24, 24, 27, 0.12),
+    0 2px 8px rgba(24, 24, 27, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
@@ -133,8 +133,8 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
+  background: var(--dd-tint-active);
+  color: var(--dd-accent);
   font-size: 11px;
   font-weight: 700;
 }
@@ -142,7 +142,7 @@
 .mock-q-text {
   font-size: 14px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--dd-text-1);
 }
 
 /* 大数字 + 环比 */
@@ -157,15 +157,15 @@
   font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #1e3a8a;
+  color: var(--dd-accent-ink);
   font-variant-numeric: tabular-nums;
 }
 
 .mock-delta {
   padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
+  background: var(--dd-tint-active);
+  color: var(--dd-accent);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -204,7 +204,7 @@
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: #64748b;
+  color: var(--dd-text-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   opacity: 0;
@@ -217,17 +217,17 @@
 }
 
 .mock-bar.top {
-  background: linear-gradient(180deg, #4f8ef7, #1d4ed8);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(180deg, #4b5563, #1f2937);
+  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.35);
 }
 /* 第一名：标签常驻蓝色，hover 投影加深 */
 .mock-bar.top::after {
-  color: #2563eb;
+  color: var(--dd-accent);
   opacity: 1;
   transform: translate(-50%, 0);
 }
 .mock-bar.top:hover {
-  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 10px 26px rgba(31, 41, 55, 0.4);
 }
 
 .mock-idx {
@@ -240,14 +240,14 @@
   font-family: "Geist Variable", system-ui, sans-serif;
   font-size: 10px;
   letter-spacing: 0.05em;
-  color: #b6c2d4;
+  color: var(--dd-text-3);
   font-variant-numeric: tabular-nums;
 }
 
 .mock-meta {
   padding-top: 2px;
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -268,13 +268,14 @@
   font-size: 21px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--dd-text-1);
+  text-wrap: balance;
 }
 
 .form-sub {
   margin: 0 0 28px;
   font-size: 14px;
-  color: #64748b;
+  color: var(--dd-text-2);
 }
 
 .field-label {
@@ -282,7 +283,7 @@
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--dd-text-2);
 }
 
 .field {
@@ -290,20 +291,20 @@
   height: 44px;
   padding: 0 13px;
   font-size: 15px;
-  color: #0f172a;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  color: var(--dd-text-1);
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line-strong);
+  border-radius: var(--dd-r-md);
   margin-bottom: 18px;
   outline: none;
   transition: border 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 .field:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-ring);
 }
 .field::placeholder {
-  color: #a3aebf;
+  color: var(--dd-text-3);
 }
 
 /* 密码可见切换 */
@@ -324,13 +325,13 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   font-size: 16px;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 .pwd-toggle:hover {
-  color: #2563eb;
+  color: var(--dd-accent);
 }
 
 .form-row {
@@ -345,14 +346,14 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--dd-text-2);
   cursor: pointer;
 }
 
 /* 忘记密码：无后端支持，视觉禁用 */
 .forgot {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   text-decoration: none;
   cursor: not-allowed;
 }
@@ -375,22 +376,22 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  background: #1e3a8a;
-  color: #ffffff;
+  background: var(--dd-accent);
+  color: var(--dd-canvas);
   border: none;
-  border-radius: 14px;
+  border-radius: var(--dd-r-lg);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.1s ease;
 }
 .submit:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--dd-accent-deep);
 }
 .submit:active:not(:disabled) {
   transform: scale(0.99);
 }
 .submit:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+  box-shadow: 0 0 0 3px var(--dd-ring);
 }
 .submit:disabled {
   opacity: 0.7;
@@ -402,7 +403,7 @@
   align-items: center;
   gap: 14px;
   margin: 24px 0 18px;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   font-size: 13px;
 }
 .divider::before,
@@ -410,7 +411,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #e7edf7;
+  background: var(--dd-line);
 }
 
 .sso-row {
@@ -425,12 +426,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  background: var(--dd-surface);
+  border: 1px solid var(--dd-line-strong);
+  border-radius: var(--dd-r-md);
   font-size: 14px;
   font-weight: 600;
-  color: #475569;
+  color: var(--dd-text-2);
   cursor: pointer;
 }
 /* SSO 未上线：置灰禁用 */
@@ -441,9 +442,9 @@
 .sso-soon {
   font-size: 11px;
   font-weight: 500;
-  color: #94a3b8;
-  border: 1px solid #e2e8f0;
-  border-radius: 5px;
+  color: var(--dd-text-3);
+  border: 1px solid var(--dd-line-strong);
+  border-radius: var(--dd-r-sm);
   padding: 1px 6px;
   white-space: nowrap;
 }
@@ -454,7 +455,7 @@
   justify-content: center;
   gap: 6px;
   margin: 20px 0 0;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   font-size: 12.5px;
 }
 .trust .lock {
@@ -464,12 +465,12 @@
 .register {
   text-align: center;
   margin: 12px 0 0;
-  color: #64748b;
+  color: var(--dd-text-2);
   font-size: 13.5px;
 }
 /* 注册未上线：视觉禁用 */
 .register a {
-  color: #94a3b8;
+  color: var(--dd-text-3);
   text-decoration: none;
   cursor: not-allowed;
 }
@@ -518,4 +519,42 @@
   .brand {
     min-height: 420px;
   }
+}
+
+/* ===== 暗色：品牌舞台转深海军 + mock 卡/表单拆解适配 token（同一产品，主题锁定） ===== */
+.dark .brand {
+  border-right-color: var(--dd-line);
+  background:
+    radial-gradient(900px 620px at 12% -8%, rgba(148, 163, 184, 0.13), transparent 60%),
+    radial-gradient(800px 560px at 108% 112%, rgba(24, 24, 27, 0.4), transparent 58%),
+    linear-gradient(180deg, #12141c 0%, #0e0f12 100%);
+}
+.dark .brand::before {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+}
+.dark .brand-mark {
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+.dark .product-mock {
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(22, 24, 29, 0.82);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.dark .mock-q,
+.dark .mock-chart {
+  border-color: var(--dd-line);
+}
+.dark .mock-bar {
+  background: linear-gradient(180deg, #232b3d, #1a2130);
+}
+.dark .mock-bar.top {
+  background: linear-gradient(180deg, #4f8cf5, #2b5cd6);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+.dark .form-error {
+  color: #ff7d92;
 }

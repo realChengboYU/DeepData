@@ -11,21 +11,14 @@ import { Image } from "@/components/image";
 import { MarkdownText } from "@/components/markdown-text";
 import {
   Reasoning,
-  ReasoningContent,
-  ReasoningRoot,
-  ReasoningText,
-  ReasoningTrigger,
+  ReasoningCluster,
 } from "@/components/assistant-ui/elements/reasoning.aui";
-import { ToolCallBlock } from "@/components/assistant-ui/elements/tool-call";
+import { ToolCallBlock, ToolCluster } from "@/components/assistant-ui/elements/tool-call";
 import { ToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
-import {
-  ToolGroupContent,
-  ToolGroupRoot,
-  ToolGroupTrigger,
-} from "@/components/assistant-ui/elements/tool-group.aui";
 import { TooltipIconButton } from "@/components/tooltip-icon-button";
 import { PromptBarComposer } from "@/components/promptbar/PromptBarComposer";
 import { useComposerControls } from "@/components/promptbar/controls";
+import { useProcessPanelStore } from "@/store/chat-controls";
 import Chart from "@/components/echarts/chart";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,6 +50,8 @@ import {
   DownloadIcon,
   MicIcon,
   ChevronDownIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PhoneIcon,
@@ -78,52 +73,6 @@ import {
 } from "react";
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
-
-type ClarificationOption = {
-  id?: string;
-  label?: string;
-  description?: string;
-};
-
-type ClarificationPart = {
-  question?: string;
-  options?: ClarificationOption[];
-};
-
-function Clarification({ part }: { part: ClarificationPart }) {
-  const { send } = useComposerControls();
-  const options = part.options ?? [];
-  const choose = (label?: string) => {
-    const text = label?.trim();
-    if (!text) return;
-    send?.({ role: "user", content: text });
-  };
-  return (
-    <div
-      data-slot="aui_clarification"
-      className="my-1 rounded-xl border border-[#d5e3f8] bg-[#f5f8ff] px-3 py-2 text-sm"
-    >
-      {part.question && (
-        <div className="mb-1.5 font-medium text-[#1e3a8a]">{part.question}</div>
-      )}
-      <div className="flex flex-col gap-1.5">
-        {options.map((o, i) => (
-          <button
-            key={o.id ?? i}
-            type="button"
-            onClick={() => choose(o.label)}
-            className="flex flex-col items-start rounded-lg border border-[#e8edf4] bg-white px-2.5 py-1.5 text-left transition-colors hover:border-[#2563eb] hover:bg-[#f5f8ff]"
-          >
-            <span className="text-[#1e3a8a]">{o.label ?? o.id}</span>
-            {o.description && (
-              <span className="text-xs text-[#86868b]">{o.description}</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Optional component overrides for the thread. `AssistantMessage` and
@@ -149,7 +98,7 @@ export type ThreadComponents = {
 
 const messageGroupBy = groupPartByType({
   reasoning: ["group-chainOfThought", "group-reasoning"],
-  "tool-call": [],
+  "tool-call": ["group-tool"],
   "standalone-tool-call": [],
 });
 
@@ -364,6 +313,7 @@ const ThreadRoot: FC<{
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
+            <ProcessPanelToggle />
             <PromptBarComposer />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
@@ -490,6 +440,37 @@ const ThreadScrollToBottom: FC = () => {
   const { t } = useI18n();
   return (
     <ThreadPrimitive.ScrollToBottom render={<TooltipIconButton tooltip={t("scrollToBottom")} variant="outline" className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible" />}><ArrowDownIcon /></ThreadPrimitive.ScrollToBottom>
+  );
+};
+
+/** 一键展开/折叠全部「思考过程/工具调用」面板（仅当会话里存在时显示）。 */
+const ProcessPanelToggle: FC = () => {
+  const { t } = useI18n();
+  const forceOpen = useProcessPanelStore((s) => s.forceOpen);
+  const toggleAll = useProcessPanelStore((s) => s.toggleAll);
+  const hasProcess = useAuiState((s) =>
+    s.thread.messages.some((m) =>
+      (m.parts ?? []).some((p) => p.type === "reasoning" || p.type === "tool-call"),
+    ),
+  );
+  if (!hasProcess) return null;
+  const expanded = forceOpen === true;
+  return (
+    <div className="flex justify-center">
+      <button
+        type="button"
+        onClick={toggleAll}
+        aria-pressed={expanded}
+        className="aui-process-toggle inline-flex items-center gap-1.5 rounded-full border border-(--dd-line) bg-(--dd-surface) px-3 py-1 text-xs font-medium text-(--dd-text-2) transition-colors hover:border-(--dd-accent) hover:text-(--dd-accent) focus-visible:outline-2 focus-visible:outline-(--dd-accent)"
+      >
+        {expanded ? (
+          <ChevronsDownUpIcon aria-hidden="true" className="size-3.5" />
+        ) : (
+          <ChevronsUpDownIcon aria-hidden="true" className="size-3.5" />
+        )}
+        {expanded ? t("collapseAllProcess") : t("expandAllProcess")}
+      </button>
+    </div>
   );
 };
 
@@ -704,29 +685,15 @@ const AssistantMessage: FC = () => {
                 if (ToolGroup) {
                   return <ToolGroup group={part}>{children}</ToolGroup>;
                 }
-                return (
-                  <ToolGroupRoot variant="ghost">
-                    <ToolGroupTrigger
-                      count={part.indices.length}
-                      active={part.status.type === "running"}
-                    />
-                    <ToolGroupContent>{children}</ToolGroupContent>
-                  </ToolGroupRoot>
-                );
+                return <ToolCluster group={part} />;
               case "group-reasoning": {
                 if (ReasoningGroup) {
                   return (
                     <ReasoningGroup group={part}>{children}</ReasoningGroup>
                   );
                 }
-                const running = part.status.type === "running";
                 return (
-                  <ReasoningRoot streaming={running}>
-                    <ReasoningTrigger active={running} />
-                    <ReasoningContent aria-busy={running}>
-                      <ReasoningText>{children}</ReasoningText>
-                    </ReasoningContent>
-                  </ReasoningRoot>
+                  <ReasoningCluster group={part}>{children}</ReasoningCluster>
                 );
               }
               case "text":
@@ -740,13 +707,13 @@ const AssistantMessage: FC = () => {
                       name={part.toolName}
                       args={part.args}
                       result={part.result}
+                      phase={part.phase}
+                      elapsedMs={part.elapsedMs}
                     />
                   )
                 );
               case "data":
                 return part.dataRendererUI;
-              case "clarification":
-                return <Clarification part={part} />;
               case "chart":
                 return <Chart spec={part.spec} />;
               case "file":
@@ -862,7 +829,7 @@ const UserMessage: FC = () => {
       <UserMessageAttachments />
 
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content peer bg-[#456fca] text-white rounded-(--composer-radius) px-4 py-2 wrap-break-word empty:hidden">
+        <div className="aui-user-message-content peer bg-(--dd-accent) text-(--dd-canvas) rounded-(--composer-radius) px-4 py-2 wrap-break-word empty:hidden">
           <MessagePrimitive.Parts
             components={{ File: UserFilePart, Image: UserImagePart }}
           />
@@ -884,6 +851,11 @@ const UserActionBar: FC = () => {
       autohide="not-last"
       className="aui-user-action-bar-root flex flex-col items-end"
     >
+      <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip={t("copy")} className="aui-user-action-copy" />}><AuiIf condition={(s) => s.message.isCopied}>
+                      <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />
+                    </AuiIf><AuiIf condition={(s) => !s.message.isCopied}>
+                      <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
+                    </AuiIf></ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Edit render={<TooltipIconButton tooltip={t("edit")} className="aui-user-action-edit" />}><PencilIcon /></ActionBarPrimitive.Edit>
     </ActionBarPrimitive.Root>
   );

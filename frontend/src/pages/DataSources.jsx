@@ -6,6 +6,7 @@ import { DbTypeIcon } from '../components/datasource/DbTypeIcon'
 import DataSourceForm from '../components/datasource/DataSourceForm'
 import DataSourceList from '../components/datasource/DataSourceList'
 import TableSelectStep from '../components/datasource/TableSelectStep'
+import { useDialogFocus } from '../components/datasource/useDialogFocus'
 import '../components/datasource/datasource.css'
 import '../components/datasource/overlays.css'
 
@@ -26,6 +27,11 @@ export default function DataSources({ onBackToChat, onAsk }) {
   const [notice, setNotice] = useState(null) // { ok, msg } —— 页内横幅（测试通过/失败、删除/激活失败等）
   const noticeTimer = useRef(null)
   const hadActiveRef = useRef(false)
+  const editSheetRef = useRef(null)
+  const delDialogRef = useRef(null)
+  const editOpen = view === 'edit' && !!editing
+  useDialogFocus(editSheetRef, editOpen)
+  useDialogFocus(delDialogRef, !!confirmDel)
 
   // 短暂闪现一条页内提示（成功绿 / 失败红），几秒后自动消失
   const flash = useCallback((msg, ok = false) => {
@@ -242,6 +248,8 @@ export default function DataSources({ onBackToChat, onAsk }) {
               className="ds-sheet"
               role="dialog"
               aria-modal="true"
+              tabIndex={-1}
+              ref={editSheetRef}
               aria-label={`${t('ds.edit')} · ${editing.name}`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -289,6 +297,8 @@ export default function DataSources({ onBackToChat, onAsk }) {
               className="ds-dialog"
               role="alertdialog"
               aria-modal="true"
+              tabIndex={-1}
+              ref={delDialogRef}
               aria-label={t('ds.confirmDelete', { name: confirmDel.name })}
               onClick={(e) => e.stopPropagation()}
             >

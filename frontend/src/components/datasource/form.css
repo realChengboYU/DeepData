@@ -243,7 +243,7 @@
 .ds-schema-chip.on {
   background: var(--dd-accent);
   border-color: var(--dd-accent);
-  color: #fff;
+  color: var(--dd-canvas);
 }
 
 /* ---------- 连接串预览：中性深灰代码块（Apple 代码块语言，非品牌色块，去掉蓝光投影） ---------- */

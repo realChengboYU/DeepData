@@ -9,7 +9,7 @@
   padding: 4px 10px 8px;
   font-size: 12px;
   font-weight: 650;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   text-align: left;
 }
 .lang-opt {
@@ -23,7 +23,7 @@
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #1e3a8a;
+  color: var(--dd-text-1);
   text-align: left;
   white-space: nowrap;
 }
@@ -54,7 +54,7 @@
 }
 .lang-check {
   font-size: 13px;
-  color: #2563eb;
+  color: var(--dd-accent);
 }
 
 /* ===== 设置弹窗（对话模型配置 + 语言） ===== */
@@ -184,7 +184,7 @@
 }
 .settings-input::placeholder { color: var(--dd-text-3); }
 .settings-input:hover { border-color: var(--dd-line-strong); }
-.settings-input:focus { outline: none; border-color: var(--dd-accent); box-shadow: 0 0 0 3px var(--dd-ring); background: #fff; }
+.settings-input:focus { outline: none; border-color: var(--dd-accent); box-shadow: 0 0 0 3px var(--dd-ring); background: var(--dd-surface); }
 .settings-input.mono {
   font-family: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
   font-size: 12.5px;
@@ -206,7 +206,7 @@
 .settings-btn:disabled { opacity: 0.6; cursor: default; }
 .settings-btn.ghost { border: 1px solid var(--dd-line); background: var(--dd-surface); color: var(--dd-text-2); }
 .settings-btn.ghost:hover:not(:disabled) { background: var(--dd-tint-hover); color: var(--dd-text-1); }
-.settings-btn.primary { background: var(--dd-accent); color: #fff; }
+.settings-btn.primary { background: var(--dd-accent); color: var(--dd-canvas); }
 .settings-btn.primary:hover:not(:disabled) { background: var(--dd-accent-deep); }
 .settings-test-result { font-size: 12.5px; line-height: 1.4; }
 /* 语义色与数据源状态徽标同源 */
@@ -266,7 +266,7 @@
 .model-badge {
   flex: none;
   padding: 1px 8px;
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  border: 1px solid var(--dd-line);
   border-radius: 999px;
   background: var(--dd-tint-active);
   color: var(--dd-accent);
@@ -317,6 +317,17 @@
 }
 .models-add:hover { border-color: var(--dd-accent); color: var(--dd-accent); background: var(--dd-tint-active); }
 
+/* Rerank / 澄清小模型：模型列表下方的独立选择区，用分隔线与列表划分 */
+.settings-rerank {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-top: 1px solid var(--dd-line);
+  padding-top: 16px;
+}
+.settings-rerank select.settings-input { cursor: pointer; }
+.settings-rerank-sub { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dd-text-3); }
+
 /* 模型编辑器（新建 / 编辑，列表视图内切换，面板尺寸不变） */
 .model-editor { display: flex; flex-direction: column; gap: 14px; }
 .model-editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
@@ -328,7 +339,13 @@
     flex-direction: row;
     padding: 10px 10px 12px;
     border-right: none;
-    border-bottom: 1px solid #eef2f8;
+    border-bottom: 1px solid var(--dd-line);
   }
   .settings-nav-item { flex: 1; justify-content: center; height: 34px; }
 }
+
+/* ===== 暗色：语义色（绿/红）提亮到可读对比 ===== */
+.dark .settings-test-result.ok { color: #5ddb8b; }
+.dark .settings-test-result.err { color: #ff7d92; }
+.dark .model-btn.danger { color: #ff7d92; }
+.dark .model-btn.danger:hover { background: rgba(255, 125, 146, 0.12); color: #ff7d92; }

@@ -70,7 +70,17 @@ def _history_to_state(history: list[dict]) -> list[dict]:
         content: list[dict] = []
         if role == "assistant":
             if m.get("reasoning"):
-                content.append({"type": "reasoning", "text": m["reasoning"]})
+                # 清洗历史里可能残留的坏时长（>1 小时视为异常，隐藏以避开旧 bug 的大值）
+                think_ms = m.get("thinking_ms")
+                if isinstance(think_ms, (int, float)) and think_ms > 3_600_000:
+                    think_ms = 0
+                content.append(
+                    {
+                        "type": "reasoning",
+                        "text": m["reasoning"],
+                        "durationMs": think_ms,
+                    }
+                )
             for t in m.get("tools") or []:
                 content.append(
                     {
@@ -79,6 +89,8 @@ def _history_to_state(history: list[dict]) -> list[dict]:
                         "toolName": t.get("name"),
                         "args": t.get("args") or {},
                         "result": t.get("result"),
+                        "phase": t.get("phase") or "query",
+                        "elapsedMs": t.get("elapsed_ms"),
                     }
                 )
             content.append({"type": "text", "text": m.get("content") or ""})
@@ -179,12 +191,22 @@ async def assistant(
                         )
                         tool_idx = idx
                     else:
-                        # 执行完成：更新该 tool-call 占位的结果
+                        # 执行完成：更新该 tool-call 占位的结果与真实耗时
                         if tool_idx is not None:
                             content[tool_idx]["result"] = event.get("result")
                             content[tool_idx]["phase"] = event.get("phase") or "query"
                             content[tool_idx]["status"] = "done"
+                            content[tool_idx]["elapsedMs"] = event.get("elapsed_ms")
                         tool_idx = None
+                elif etype == "done":
+                    # 思考阶段结束：把真实耗时写回 reasoning part（供前端展示「思考耗时」）
+                    if event.get("thinking_ms") is not None:
+                        think_ms = event["thinking_ms"]
+                        if isinstance(think_ms, (int, float)) and think_ms > 3_600_000:
+                            think_ms = 0
+                        content = controller.state["messages"][asst_idx]["content"]
+                        if 0 <= reasoning_idx < len(content):
+                            content[reasoning_idx]["durationMs"] = think_ms
                 elif etype == "clarification":
                     controller.state["messages"][asst_idx]["content"].append(
                         {

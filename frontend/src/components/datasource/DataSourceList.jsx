@@ -104,6 +104,7 @@ export default function DataSourceList({ sources, activeId, busy, testing, loadi
                         className="ds-act-btn"
                         disabled={busy === s.id}
                         title={t('ds.setActive')}
+                        aria-label={t('ds.setActive')}
                         onClick={() => onSetActive(s.id)}
                       >
                         <CircleCheck />
@@ -114,14 +115,15 @@ export default function DataSourceList({ sources, activeId, busy, testing, loadi
                       className="ds-act-btn"
                       disabled={busy === s.id || testing === s.id}
                       title={t('ds.test')}
+                      aria-label={t('ds.test')}
                       onClick={() => onTest(s.id)}
                     >
                       {testing === s.id ? <Loader2 className="spin" /> : <Zap />}
                     </button>
-                    <button type="button" className="ds-act-btn" title={t('ds.viewTables')} onClick={() => onViewTables(s)}>
+                    <button type="button" className="ds-act-btn" title={t('ds.viewTables')} aria-label={t('ds.viewTables')} onClick={() => onViewTables(s)}>
                       <Table />
                     </button>
-                    <button type="button" className="ds-act-btn" title={t('ds.edit')} onClick={() => onEdit(s)}>
+                    <button type="button" className="ds-act-btn" title={t('ds.edit')} aria-label={t('ds.edit')} onClick={() => onEdit(s)}>
                       <Pencil />
                     </button>
                     <button
@@ -129,6 +131,7 @@ export default function DataSourceList({ sources, activeId, busy, testing, loadi
                       className="ds-act-btn danger"
                       disabled={busy === s.id}
                       title={t('ds.delete')}
+                      aria-label={t('ds.delete')}
                       onClick={() => onRemove(s)}
                     >
                       {busy === s.id ? <Loader2 className="spin" /> : <Trash2 />}

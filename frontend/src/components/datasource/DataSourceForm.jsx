@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, CircleCheck, Eye, EyeOff, Loader2, X, Zap } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { createDataSource, introspectSchemasRaw, testDataSourceRaw, updateDataSource } from '../../api'
+import { createDataSource, introspectSchemas, introspectSchemasRaw, testDataSource, testDataSourceRaw, updateDataSource } from '../../api'
 import { DB_TYPES, DbTypeIcon } from './DbTypeIcon'
 import './form.css'
 
@@ -51,19 +51,23 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
   const [schemaList, setSchemaList] = useState([])
   const [fetchingSchema, setFetchingSchema] = useState(false)
 
-  // 「获取 Schema」：按当前连接信息列出库内 schema
+  // 「获取 Schema」：按当前连接信息列出库内 schema。
+  // 编辑态且未重输密码时，改用库内已保存凭据（后端不返回密码，避免空密码报错）。
   async function fetchSchemas() {
     if (fetchingSchema) return
     setFetchingSchema(true)
     try {
-      const r = await introspectSchemasRaw({
-        host: form.host.trim(),
-        port: Number(form.port) || 5432,
-        dbname: form.dbname.trim(),
-        username: form.username.trim(),
-        password: form.password,
-        ssl: form.ssl,
-      })
+      const r =
+        targetId && !form.password
+          ? await introspectSchemas(targetId)
+          : await introspectSchemasRaw({
+              host: form.host.trim(),
+              port: Number(form.port) || 5432,
+              dbname: form.dbname.trim(),
+              username: form.username.trim(),
+              password: form.password,
+              ssl: form.ssl,
+            })
       setSchemaList(r?.schemas ?? [])
     } catch (e) {
       setSchemaList([])
@@ -93,7 +97,11 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
     setTesting(true)
     setTestResult(null)
     try {
-      const r = await testDataSourceRaw(rawConn())
+      // 编辑态且未重输密码：用库内已存凭据，避免空密码导致「no password supplied」
+      const r =
+        targetId && !form.password
+          ? await testDataSource(targetId)
+          : await testDataSourceRaw(rawConn())
       setTestResult(r)
     } catch (e) {
       setTestResult({ ok: false, message: e?.response?.data?.detail || t('ds.testFail') })
@@ -108,7 +116,11 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
     setSaving(true)
     setTestResult(null)
     try {
-      const tr = await testDataSourceRaw(rawConn())
+      // 编辑态且未重输密码：测试用库内已存凭据（否则空密码导致测试拦截，编辑无法保存）
+      const tr =
+        targetId && !form.password
+          ? await testDataSource(targetId)
+          : await testDataSourceRaw(rawConn())
       if (!tr?.ok) {
         setTestResult(tr || { ok: false, message: t('ds.testFail') })
         return
@@ -192,10 +204,12 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
           <label htmlFor="ds-name">{t('ds.name')}</label>
         <input
           id="ds-name"
+          name="ds-name"
           className="ds-input"
           value={form.name}
           placeholder="订单库"
           autoComplete="off"
+          spellCheck={false}
           autoFocus={isEdit}
           onChange={(e) => set('name', e.target.value)}
         />
@@ -210,10 +224,12 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
           <label htmlFor="ds-host">{t('ds.host')}</label>
           <input
             id="ds-host"
+            name="ds-host"
             className="ds-input"
             value={form.host}
             placeholder="10.0.0.5 / 主机名"
             autoComplete="off"
+            spellCheck={false}
             onChange={(e) => set('host', e.target.value)}
           />
         </div>
@@ -221,8 +237,10 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
           <label htmlFor="ds-port">{t('ds.port')}</label>
           <input
             id="ds-port"
+            name="ds-port"
             className="ds-input"
             type="number"
+            inputMode="numeric"
             min="1"
             max="65535"
             value={form.port}
@@ -235,10 +253,12 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
         <label htmlFor="ds-db">{t('ds.database')}</label>
         <input
           id="ds-db"
+          name="ds-db"
           className="ds-input"
           value={form.dbname}
           placeholder="order_db"
           autoComplete="off"
+          spellCheck={false}
           onChange={(e) => set('dbname', e.target.value)}
         />
       </div>
@@ -248,10 +268,12 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
         <div className="ds-schema-row">
           <input
             id="ds-schema"
+            name="ds-schema"
             className="ds-input ds-input-mono"
             value={form.schema}
             placeholder="public"
             autoComplete="off"
+            spellCheck={false}
             onChange={(e) => set('schema', e.target.value)}
           />
           <button
@@ -285,10 +307,12 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
         <label htmlFor="ds-user">{t('ds.username')}</label>
         <input
           id="ds-user"
+          name="ds-user"
           className="ds-input ds-input-mono"
           value={form.username}
           placeholder="postgres"
           autoComplete="off"
+          spellCheck={false}
           onChange={(e) => set('username', e.target.value)}
         />
       </div>
@@ -298,6 +322,7 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
         <div className="ds-pwd-wrap">
           <input
             id="ds-pwd"
+            name="ds-pwd"
             className="ds-input"
             type={showPwd ? 'text' : 'password'}
             value={form.password}
@@ -336,8 +361,10 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
                 <label htmlFor="ds-timeout">{t('ds.timeout')}</label>
                 <input
                   id="ds-timeout"
+                  name="ds-timeout"
                   className="ds-input"
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   max="300"
                   value={form.timeout}
@@ -348,8 +375,10 @@ export default function DataSourceForm({ editing, existingId, onNext, onPrev, on
                 <label htmlFor="ds-pool">{t('ds.poolSize')}</label>
                 <input
                   id="ds-pool"
+                  name="ds-pool"
                   className="ds-input"
                   type="number"
+                  inputMode="numeric"
                   min="1"
                   max="500"
                   value={form.pool_size}

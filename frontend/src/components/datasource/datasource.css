@@ -116,7 +116,7 @@
 .dsrc-topbar-badge {
   background: var(--dd-surface);
   border: 1px solid var(--dd-line);
-  color: #1e3a8a;
+  color: var(--dd-text-2);
   border-radius: 999px;
   align-items: center;
   gap: 6px;
@@ -162,6 +162,7 @@
   font-family: Geist Variable,system-ui,sans-serif;
   font-size: 17px;
   font-weight: 650;
+  text-wrap: balance;
 }
 .dsrc-pagehead .ds-toolbar-search {
   flex: none;
@@ -234,6 +235,7 @@
   font-size: 22px;
   font-weight: 700;
   display: flex;
+  text-wrap: balance;
 }
 .dsrc-flow-badge {
   background: var(--dd-tint-active);
@@ -313,7 +315,7 @@
 }
 .ds-btn-primary {
   background: var(--dd-accent);
-  color: #fff;
+  color: var(--dd-canvas);
 }
 .ds-btn-primary:hover:not(:disabled) {
   background: var(--dd-accent-deep);
@@ -377,4 +379,16 @@
   .ds-row2 {
   grid-template-columns: 1fr;
 }
+}
+
+/* ---------- 触控与内容防溢出 ----------
+   touch-action: manipulation 去掉移动端双击缩放延迟；
+   内容面板用 overscroll-behavior: contain 阻止滚动链穿透到页面。 */
+.dsrc-page :is(.ds-btn, .ds-act-btn, .dsrc-crumb-link, .dsrc-type, .dsrc-pick-btn,
+  .dsrc-tab, .dsrc-pager-btn, .ds-schema-chip, .ds-pwd-toggle, .ds-adv-toggle) {
+  touch-action: manipulation;
+}
+.dsrc-page,
+.dsrc-page :is(input, textarea, button) {
+  -webkit-tap-highlight-color: transparent;
 }

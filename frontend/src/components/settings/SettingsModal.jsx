@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Cable, Check, Globe, Loader2, Plus, X } from 'lucide-react'
 import { LANGS, LANG_LABELS, useI18n } from '../../i18n'
 import { useModelsStore } from '../../store/models'
-import { testLlmConfig, createLlmModel, updateLlmModel, deleteLlmModel, setLlmModelDefault } from '../../api'
+import { testLlmConfig, createLlmModel, updateLlmModel, deleteLlmModel, setLlmModelDefault, getLlmRerank, setLlmRerank } from '../../api'
 import './settings.css'
 
 // 设置弹窗：左侧选择「模型配置 / 语言」，右侧显示对应的页面。
@@ -22,6 +22,15 @@ export default function SettingsModal({ open, onClose }) {
   const [testResult, setTestResult] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // Rerank / 澄清专用小模型：空串 = 跟随对话主模型
+  const [rerankModelId, setRerankModelId] = useState('')
+
+  const loadRerank = () => {
+    getLlmRerank()
+      .then((r) => setRerankModelId(r?.model_id || ''))
+      .catch(() => setRerankModelId(''))
+  }
+
   // 打开时回到「模型配置」页并刷新模型列表；重置一次性状态
   useEffect(() => {
     if (!open) return
@@ -29,6 +38,7 @@ export default function SettingsModal({ open, onClose }) {
     setEditing(null)
     setTestResult(null)
     loadModels()
+    loadRerank()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -88,11 +98,25 @@ export default function SettingsModal({ open, onClose }) {
 
   const doDelete = (m) => {
     if (!window.confirm(t('settings.delModelConfirm', { name: m.name }))) return
-    deleteLlmModel(m.id).then(() => loadModels()).catch(() => {})
+    deleteLlmModel(m.id)
+      .then(() => {
+        if (m.id === rerankModelId) {
+          setRerankModelId('')
+          setLlmRerank('').catch(() => loadRerank())
+        }
+        loadModels()
+      })
+      .catch(() => {})
   }
 
   const doSetDefault = (m) => {
     setLlmModelDefault(m.id).then(() => loadModels()).catch(() => {})
+  }
+
+  const doSetRerank = (value) => {
+    const next = value || ''
+    setRerankModelId(next)
+    setLlmRerank(next).catch(() => loadRerank())
   }
 
   return (
@@ -268,6 +292,28 @@ export default function SettingsModal({ open, onClose }) {
                       <span>{t('settings.addModel')}</span>
                     </button>
                   </>
+                )}
+                {!editing && (
+                  <div className="settings-rerank">
+                    <label className="settings-field-label" htmlFor="set-rerank">
+                      {t('settings.rerankTitle')}
+                    </label>
+                    <select
+                      id="set-rerank"
+                      className="settings-input"
+                      value={models.some((m) => m.id === rerankModelId) ? rerankModelId : ''}
+                      onChange={(e) => doSetRerank(e.target.value)}
+                    >
+                      <option value="">{t('settings.rerankFollow')}</option>
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                          {m.is_default ? ` · ${t('settings.default')}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="settings-rerank-sub">{t('settings.rerankSub')}</p>
+                  </div>
                 )}
               </section>
             ) : (

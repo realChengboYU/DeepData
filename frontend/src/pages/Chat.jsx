@@ -4,9 +4,10 @@ import AssistantChat from '@/components/assistant-chat'
 import DataSources from './DataSources'
 import DsSwitcher from '../components/datasource/DsSwitcher'
 import SettingsModal from '../components/settings/SettingsModal'
-import { Book, Check, ChevronDown, Database, Download, MessageSquare, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, Settings, SquarePlus, Trash2, X } from 'lucide-react'
+import { Book, Check, ChevronDown, Database, Download, MessageSquare, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, Settings, SquarePlus, Sun, Trash2, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useModelsStore } from '../store/models'
+import { useThemeStore } from '../store/theme'
 import { deleteSession, exportSession, getHistory, getSessions, renameSession, getDataSources, setSessionDataSource } from '../api'
 import './chat.css'
 
@@ -20,6 +21,8 @@ export default function Chat() {
 
   const [dsView, setDsView] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggle)
   // 当前会话绑定的数据源 id（每次对话只针对一个库；会话内可切换）
   const [currentDsId, setCurrentDsId] = useState(null)
   // 数据源列表（供顶部切换器 / 「使用中」默认）
@@ -329,6 +332,15 @@ export default function Chat() {
                 </span>
                 <span className="rail-user-name">{user?.name || 'deepdata'}</span>
               </div>
+              <button
+                type="button"
+                className="rail-toggle"
+                title={theme === 'dark' ? t('theme.toLight') : t('theme.toDark')}
+                aria-label={theme === 'dark' ? t('theme.toLight') : t('theme.toDark')}
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? <Sun /> : <Moon />}
+              </button>
               <button
                 type="button"
                 className="rail-toggle"

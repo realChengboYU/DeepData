@@ -23,7 +23,7 @@
   background: var(--dd-tint-hover);
 }
 .ds-switcher-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--dd-accent);
   outline-offset: 2px;
 }
 .ds-switcher-ic {
@@ -39,7 +39,7 @@
 .ds-switcher-caret {
   width: 10px;
   height: 10px;
-  color: #64748b;
+  color: var(--dd-text-2);
   transition: transform 0.15s ease;
 }
 .ds-switcher-caret.open {
@@ -53,7 +53,7 @@
   min-width: 240px;
   max-width: 320px;
   padding: 6px;
-  background: color-mix(in srgb, #ffffff 0.9, transparent);
+  background: var(--dd-material);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border: 1px solid var(--dd-line);
@@ -63,7 +63,7 @@
 .ds-switcher-empty {
   padding: 12px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   text-align: center;
 }
 .ds-switcher-opt {
@@ -91,7 +91,7 @@
   min-width: 0;
   font-size: 13.5px;
   font-weight: 550;
-  color: #1e3a8a;
+  color: var(--dd-accent-ink);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -101,13 +101,13 @@
   max-width: 120px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--dd-text-3);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .ds-switcher-opt-check {
   flex: none;
-  color: #2563eb;
+  color: var(--dd-accent);
   font-size: 13px;
 }

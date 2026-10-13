@@ -21,6 +21,7 @@
   box-shadow: 0 -12px 48px rgba(29, 29, 31, 0.22);
   padding-bottom: 32px;
   animation: ds-sheet-up 0.35s var(--dd-ease-out);
+  overscroll-behavior: contain;
 }
 .ds-sheet-grab {
   width: 36px;
@@ -124,6 +125,7 @@
   box-shadow: var(--dd-shadow-3);
   text-align: center;
   animation: ds-pop 0.22s var(--dd-ease-pop);
+  overscroll-behavior: contain;
 }
 .ds-dialog h4 {
   margin: 0 0 6px;

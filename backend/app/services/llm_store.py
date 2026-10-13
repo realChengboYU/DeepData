@@ -370,6 +370,76 @@ def resolve_llm_config(user_key: Optional[str] = None, model_id: Optional[str] =
     return _env_fallback()
 
 
+# ===== Rerank / 澄清小模型：设置里可为该用户指定「专用 rerank 模型」=====
+# 未指定时跟随对话主模型（历史行为）；指定值指向 llm_models 中的某一条。
+
+_RERANK_TABLE = "llm_rerank_settings"
+
+
+def _ensure_rerank_table() -> None:
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {_RERANK_TABLE} (
+                    user_key   text        PRIMARY KEY,
+                    model_id   text,
+                    updated_at timestamptz NOT NULL DEFAULT now()
+                )
+                """
+            )
+
+
+def get_rerank_model_id(user_key: str) -> Optional[str]:
+    """该用户指定的 rerank 模型 id；未指定返回 None。"""
+    _ensure_rerank_table()
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT model_id FROM {_RERANK_TABLE} WHERE user_key=%s",
+                [user_key],
+            )
+            row = cur.fetchone()
+    return (row[0] if row and row[0] else None)
+
+
+def set_rerank_model_id(user_key: str, model_id: Optional[str]) -> bool:
+    """设置 / 清除该用户的 rerank 模型（须属于该用户）。空值表示跟随对话主模型。"""
+    mid = (model_id or "").strip()
+    if mid and get_model(user_key, mid) is None:
+        return False
+    _ensure_rerank_table()
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {_RERANK_TABLE} (user_key, model_id, updated_at) "
+                "VALUES(%s, %s, now()) ON CONFLICT (user_key) DO UPDATE "
+                "SET model_id=EXCLUDED.model_id, updated_at=now()",
+                [user_key, mid or None],
+            )
+    return True
+
+
+def resolve_rerank_config(user_key: Optional[str] = None, chat_model_id: Optional[str] = None) -> tuple:
+    """解析 rerank 用 (api_key|None, base_url, model)。
+
+    优先级：用户指派的 rerank 模型（llm_rerank_settings）> 对话主模型（resolve_llm_config）。
+    未指派时沿用对话模型，保持现状。
+    """
+    if user_key:
+        rid = get_rerank_model_id(user_key)
+        if rid:
+            m = _get_model_plain(user_key, rid)
+            if m and (m.get("api_key") or m.get("model") or m.get("base_url")):
+                env_key, env_base, env_model = _env_fallback()
+                return (
+                    m.get("api_key") or env_key,
+                    m.get("base_url") or env_base,
+                    m.get("model") or env_model,
+                )
+    return resolve_llm_config(user_key, chat_model_id)
+
+
 def mask_key(key: Optional[str]) -> str:
     """把 Key 打码：前3 + 8 个占位 + 后4；太短则全占位。"""
     k = (key or "").strip()

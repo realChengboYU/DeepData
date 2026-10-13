@@ -9,7 +9,10 @@ from typing import Optional, Sequence
 from app.prompt.system import SYSTEM_PROMPT
 
 
-def compose_system_prompt(skill_instructions: Optional[str] = None) -> str:
+def compose_system_prompt(
+    skill_instructions: Optional[str] = None,
+    schema_context: Optional[str] = None,
+) -> str:
     """构造发送给 LLM 的 system 文本。
 
     约定：通用角色/准则放在 SYSTEM_PROMPT，能力级指令由 Skill 的 SKILL.md 提供，
@@ -18,10 +21,19 @@ def compose_system_prompt(skill_instructions: Optional[str] = None) -> str:
 
     Args:
         skill_instructions: 某个 Skill 的 SKILL.md 指令文本（可为 None，则只用通用 SYSTEM_PROMPT）。
+        schema_context: 当前问题相关字段的 Schema 上下文（来自 Schema 检索），拼接在末尾。
     """
-    if not skill_instructions:
+    parts = [SYSTEM_PROMPT]
+    if skill_instructions:
+        parts.append(skill_instructions)
+    if schema_context:
+        parts.append(
+            "## 相关数据表 Schema（已按你的问题召回的候选表与字段，优先使用；不足时再用工具补充）\n\n"
+            + schema_context
+        )
+    if len(parts) == 1:
         return SYSTEM_PROMPT
-    return f"{SYSTEM_PROMPT}\n\n---\n\n{skill_instructions}"
+    return "\n\n---\n\n".join(parts)
 
 
 def build_messages(
@@ -29,6 +41,7 @@ def build_messages(
     question: Optional[str] = None,
     system_prompt: str = SYSTEM_PROMPT,
     skill_instructions: Optional[str] = None,
+    schema_context: Optional[str] = None,
 ) -> list[dict]:
     """构造发给 LLM 的完整消息列表：`[system, ...history(仅 role/content), <user 当前问题>]`。
 
@@ -42,8 +55,12 @@ def build_messages(
         question: 当前用户问题；为 None 时不追加（历史里可能已包含当前问题）。
         system_prompt: 覆盖默认系统提示词。
         skill_instructions: 可选，某 Skill 的 SKILL.md 指令文本；提供时拼接到 system 末尾（由 SKILL.md 提供内容，非写死）。
+        schema_context: 可选，当前问题相关字段的 Schema 上下文；提供时拼接到 system 末尾。
     """
-    system_content = compose_system_prompt(skill_instructions) if skill_instructions else system_prompt
+    if skill_instructions or schema_context:
+        system_content = compose_system_prompt(skill_instructions, schema_context)
+    else:
+        system_content = system_prompt
     messages: list[dict] = [{"role": "system", "content": system_content}]
     for m in history or []:
         role = m.get("role", "user") if isinstance(m, dict) else "user"

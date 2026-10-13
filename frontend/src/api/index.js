@@ -123,6 +123,13 @@ export function introspectSchemasRaw(payload) {
     .then((res) => res.data)
 }
 
+// 内省：按已保存数据源凭据列出可用 schema（编辑态「获取 Schema」，不依赖重输密码）
+export function introspectSchemas(id) {
+  return api
+    .post(`/datasources/${encodeURIComponent(id)}/introspect/schemas`, null, { timeout: 40000 })
+    .then((res) => res.data)
+}
+
 // 内省：列出目标库 public 下的表（表名 + 注释）
 export function introspectTables(id) {
   return api
@@ -202,6 +209,16 @@ export function deleteLlmModel(modelId) {
 // 设为默认模型（聊天未显式选择时使用）
 export function setLlmModelDefault(modelId) {
   return api.post(`/settings/llm/models/${encodeURIComponent(modelId)}/default`).then((res) => res.data)
+}
+
+// Rerank / 澄清专用小模型：读取当前指派（未指派返回空，跟随对话主模型）
+export function getLlmRerank() {
+  return retry(() => api.get('/settings/llm/rerank').then((res) => res.data))
+}
+
+// 设置 Rerank 模型；modelId 传空串 = 跟随对话主模型
+export function setLlmRerank(modelId) {
+  return api.put('/settings/llm/rerank', { model_id: modelId || '' }).then((res) => res.data)
 }
 
 export default api
